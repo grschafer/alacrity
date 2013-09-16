@@ -1,0 +1,6 @@
+[submodule "external/tarrasque"]
+	path = external/tarrasque
+	url = https://github.com/skadistats/Tarrasque.git
+[submodule "external/skadi"]
+	path = external/skadi
+	url = https://github.com/skadistats/skadi.git
