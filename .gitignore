@@ -42,4 +42,4 @@ venv
 replays/*
 
 # config
-alacrity/config.cfg
+config.cfg
