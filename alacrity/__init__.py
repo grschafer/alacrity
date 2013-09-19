@@ -1,4 +1,2 @@
-from .alacrity import Alacrity
-
-# analyzer list
-from .hero_list import HeroList
+from .db import db
+from .api import *

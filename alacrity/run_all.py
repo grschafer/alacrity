@@ -1,0 +1,58 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
+from tarrasque import *
+import os
+import argparse
+
+# helpers
+from db import db
+from api import get_match_details
+
+# analysis functions
+from ward_map import extract_wards
+
+
+def endswith(array, ending):
+    for x in array:
+        if x.endswith(ending):
+            yield x
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('target_dir',
+                        help='directory to process .dem files from')
+    parser.add_argument('-f', action='store_true',
+                        help='force re-processing for matches already found in db')
+    parser.add_argument('-r', action='store_true',
+                        help='parse .dem files in sub-directories')
+    args = parser.parse_args()
+
+    for root, dirs, files in os.walk(args.target_dir):
+        for fname in endswith(files, '.dem'):
+            path = os.path.join(root, fname)
+            print 'processing match from {}'.format(path)
+
+            replay = StreamBinding.from_file(path, start_tick=0)
+            match_id = replay.info.match_id
+            print '  match id {}'.format(match_id)
+
+            if args.f or db.find_one({'match_id': match_id}) is None:
+                match = get_match_details(match_id)
+                print '  match details: {} vs {}, radiant_win: {}'.format(match.get('radiant_name', ''), match.get('dire_name', ''), match['radiant_win'])
+
+                wards = extract_wards(replay)
+                print '  contains {} wards'.format(len(wards))
+
+                match['wards'] = wards
+                result = db.update({'match_id': match_id}, match, upsert=True)
+                print '  result: {}'.format(result)
+            else:
+                print '  match already exists in database, skipping...'
+
+        # don't walk sub-directories unless -r flag supplied
+        if not args.r:
+            del dirs[:]
+
+if __name__ == '__main__':
+    main()
