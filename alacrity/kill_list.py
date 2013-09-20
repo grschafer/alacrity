@@ -6,40 +6,11 @@ import sys
 from api import get_match_details
 from db import db
 from inspect_props import dict_to_csv
-from utils import hero_list
+from utils import hero_id_to_raw
 
 
 import traceback
 from collections import defaultdict
-# look in combat log for death (4) of heroes (number?)
-# rosh_deaths = [x for x in msgs if isinstance(x, CombatLogMessage) and x.target_name == 'npc_dota_roshan' and x.type == 'death']
-#
-# or look in user_messages for chat_event type=0 (herokill)
-# chat_event type=1 (herodeny)
-#
-# compile damage sources preceding a death
-# save bounty (xp/gold)?
-#
-# traverse replay once, collect death times
-# retraverse and...
-# for ~30? seconds before death collect damage instances where they are target
-# LOOK FOR OVERHEAD_ALERT_GOLD to tell bounties per hero?
-#{
-#    'died': heroname,
-#    'bounty': 1234,
-#    'killers':[
-#        {'name': heroname,
-#         'damage_sources': [
-#                'name': spell1,
-#                'amount': 1234
-#             ]},
-#        {'name': heroname,
-#         'damage_sources': [
-#                'name': spell1,
-#                'amount': 1234
-#             ]},
-#        ],
-#}
 
 @register_entity("DT_DOTA_Unit_Hero_Meepo")
 class Meepo(Hero):
@@ -48,14 +19,14 @@ class Meepo(Hero):
 def get_heroes_in_1200(replay, target):
     """Returns list of heroes within 1200 range of target and on opposite team"""
     heroes = [p for p in replay.players if p.team in TEAMS.values() and p.team != target.team]
-    def distance(a,b):
-        return ((a.position[0] - b.position[0])**2 + (a.position[1] - b.position[1])**2)**0.5
+    def within_1200(a,b):
+        return ((a.position[0] - b.position[0])**2 + (a.position[1] - b.position[1])**2) <= 1200 * 1200
     # meepo is torture
     if target.hero.name == 'Meepo':
         meepos = Meepo.get_all(replay)
-        heroes = [p for p in heroes if any([True for m in meepos if distance(p.hero, m) <= 1200])]
+        heroes = [p for p in heroes if any([within_1200(p.hero, m) for m in meepos])]
     else:
-        heroes = [p for p in heroes if distance(p.hero, target.hero) <= 1200]
+        heroes = [p for p in heroes if within_1200(p.hero, target.hero)]
     return heroes
 
 class Streak(list):
@@ -86,7 +57,7 @@ _XP_AREA = {1: lambda level: 220 if level == 0 else (level * 20 + _XP_AREA[1](le
             5: lambda level: 35 if level == 0 else (level * 4 + _XP_AREA[5](level - 1) if level < 5 else 24 * level - 25)}
 
 # WHAT ABOUT BH TRACK KILLS?
-def gold_xp_from_kill(replay, victim, killers, firstblood=False, deny=False):
+def gold_xp_from_kill(replay, victim, firstblood=False, deny=False):
     """Total gold and xp given away from killing the victim"""
     near_heroes = get_heroes_in_1200(replay, victim)
     num_heroes = len(near_heroes)
@@ -155,10 +126,7 @@ import pdb;
 
 TEAMS = {2: 'radiant', 3: 'dire'}
 def extract_kill_list(replay):
-    kill_list = []
     deaths = []
-    OVERHEADS = {0:'gold', 1:'deny', 3:'xp'}
-    PLAYERS = {p.index:p.name for p in replay.players}
     # ALSO NEED DICTS OF RAW NAMES (npc_dota_hero_nevermore) AND ENT_INDEX (2)?
     # raw names needs to include towers, creeps (lane/neutral), and fountain
     for tick in replay.iter_ticks(start="pregame", step=30):
@@ -174,17 +142,17 @@ def extract_kill_list(replay):
             reincarnating = [p for p in replay.players if p.hero and p.hero.properties[(u'DT_DOTA_BaseNPC_Hero', u'm_bReincarnating')] == 1]
             if len(reincarnating) > 0:
                 print '!!reincarnating:{} {}'.format(reincarnating[0].hero.name, reincarnating[0].index)
-            reincarnating = [hero_list[p.hero.properties[(u'DT_DOTA_BaseNPC', u'm_iUnitNameIndex')]] for p in reincarnating]
+            reincarnating = [hero_id_to_raw[p.hero.properties[(u'DT_DOTA_BaseNPC', u'm_iUnitNameIndex')]] for p in reincarnating]
             cur_deaths = [x for x in cur_deaths if x.target_name not in reincarnating]
 
 
             for death in cur_deaths:
                 victim = [x for x in replay.players if x.hero.name == raw_name_to_hero_name(death.target_name)][0]
                 killers = get_killers(replay, victim)
+                firstblood = True if len(deaths) == 0 else False
                 deny = True if killers[0].team == victim.team else False
-                gold, xp = gold_xp_from_kill(replay, victim, killers, firstblood=True if len(deaths) == 0 else False, deny=deny)
-                d = {'tick': tick, 'hero':death.target_name, 'bounty_gold': gold, 'bounty_xp': xp, 'deny': deny}
-                #d = {'tick': tick, 'hero':death.target_name}
+                gold, xp = gold_xp_from_kill(replay, victim, firstblood=firstblood, deny=deny)
+                d = {'tick': tick, 'hero':death.target_name, 'bounty_gold': gold, 'bounty_xp': xp, 'deny': deny, 'x': victim.hero.position[0], 'y': victim.hero.position[1]}
                 deaths.append(d)
                 print 'tick {}: {}'.format(tick, d)
         except Exception as e:
@@ -217,21 +185,9 @@ def extract_kill_list(replay):
             print traceback.format_exc()
             pdb.set_trace()
 
-
-    #for tick in replay.iter_ticks(start="pregame", step=30):
-    #    # only collect game_events/user_messages if within 30 * 30 ticks of death
-    #    evts = replay.game_events
-    #    combats = [x for x in evts if isinstance(x, CombatLogMessage) and x.type == 'damage' and x.target_name.startswith('npc_dota_hero')]
-
-    #    msgs = replay.user_messages
-    #    overheads = [x[1] for x in msgs if x[0] == 83]
-    #    overs = [{'id': index_to_id(x.source_player_entindex)} for x in overheads]
-    #    overhead_ids = [replay.world.find_index(x.source_player_entindex)][('DT_DOTAPlayer', 'm_iPlayerID')] for x in overheads]
-    #    print '{}: {} combats, {} overheads'.format(replay.info.game_time - 90, len(combats), len(overheads))
-
     print deaths
     pdb.set_trace()
-    return kill_list
+    return deaths
 
 
 def main():
