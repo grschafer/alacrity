@@ -3,8 +3,7 @@
 
 from tarrasque import *
 import sys
-from api import get_match_details
-from db import db
+import utils
 
 import traceback
 import pdb
@@ -14,19 +13,37 @@ import pdb
 #  mouse clicks and mouse travel distance
 #  "possession"
 #  bonus gold/xp from midas/devour/track?
+#  item build times (for a finished item, how long did it take them to finish it?)
 
 # CALL THIS "BEST 2-MINUTE CREEP GPM" instead of farming route?
 def extract_routes(replay):
-    top_farmers = []
+    top_farmer = []
+    best2min = None
+    cur_queue = []
     replay.go_to_tick('postgame')
-    top_farmers = sorted(replay.players, key=lambda x: x.earned_gold / replay.info.game_end_time)[:4]
+    top_farmer = sorted(replay.players, key=lambda x: x.earned_gold / replay.info.game_end_time)[-1]
+    top_farmer_name = utils.hero_dt_to_raw[top_farmer.hero.dt_key]
 
+    # ADD IN PASSIVE GOLD INCREASE!
     pdb.set_trace()
     for tick in replay.iter_ticks(start="game", step=30):
-        for pl in top_farmers:
-            if pl.hero:
-                x,y = pl.hero.position
-                pos[pl.index].append((int(x),int(y)))
+        try:
+            evts = replay.game_events
+            farmer_kills = [x for x in evts if isinstance(x, CombatLogMessage) and x.type == 'death' and x.attacker_name == top_farmer_name and x.target_name.startswith('npc_dota_creep')]
+            for k in farmer_kills:
+                # MATCH gold.target_entindex to k.target_name? otherwise, don't look through farmer kills
+                # gets gold overhead messages given to topfarmer and gotten from a creep type
+                golds = [x[1] for x in replay.user_messages if x[0] == 83 and x[1].message_type == 0 and top_farmer.ehandle == replay.world.by_index[x[1].target_player_entindex] and (u'DT_DOTA_BaseNPC_Creep', u'm_bIsWaitingToSpawn') in replay.world.find_index(x[1].target_entindex)]
+                print '{} {} {} killed {} {} for {}'.format(k.source_name, k.attacker_name, k.inflictorname, k.target_name, k.properties['targetsourcename'], [x.value for x in golds])
+        except:
+            traceback.print_exc()
+            pdb.set_trace()
+
+
+        #for pl in top_farmers:
+        #    if pl.hero:
+        #        x,y = pl.hero.position
+        #        pos[pl.index].append((int(x),int(y)))
 
     # a queue of 2 minutes of {tick,x,y,earned_gold?} for each farmer
     # if combatlog contains 'farmer killed x' for x not a Creep_Lane/Creep_Neutral (convert raw names I guess), then flush queue
