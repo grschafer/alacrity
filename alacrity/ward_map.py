@@ -30,15 +30,16 @@ def extract_wards(replay):
                         'team': w.team,
                         'tick': w.tick
                     }
-    return wards.values()
+    return {'wards':wards.values()}
 
 def main():
     dem_file = sys.argv[1] # pass replay as cmd-line argument!
     replay = StreamBinding.from_file(dem_file, start_tick="pregame")
     match_id = replay.info.match_id
-    match = get_match_details(match_id)
+    #match = get_match_details(match_id)
+    match = db.find_one({'match_id': match_id}) or {}
     wards = extract_wards(replay)
-    match['wards'] = wards
+    match.update(wards)
     result = db.update({'match_id': match_id}, match, upsert=True)
 
 if __name__ == '__main__':

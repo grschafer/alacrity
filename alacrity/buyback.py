@@ -22,15 +22,16 @@ def buyback_cost(player, game_info):
 # look in user_messages for chat_event type=7, buyback by player
 def extract_buybacks(replay):
     bbs = []
-    PLAYERS = {p.index:p.name for p in replay.players}
-    for tick in replay.iter_ticks(start="pregame", step=1800):
-        print 'tick: {}'.format(tick)
+    replay.go_to_tick('postgame')
+    players = {p.index:p for p in replay.players}
+    for tick in replay.iter_ticks(start="pregame", step=30):
+        #print 'tick: {}'.format(tick)
         msgs = replay.user_messages
         buybacks = [x[1] for x in msgs if x[0] == 66 and x[1].type == 7]
         for msg in buybacks:
             bb_cost = buyback_cost([p for p in replay.players if p.index == msg.playerid_1][0], replay.info)
-            bbs.append({'tick':tick, 'event':'buyback', 'cost':bb_cost, 'player':PLAYERS[msg.playerid_1]})
-    return bbs
+            bbs.append({'tick':tick, 'cost':bb_cost, 'hero':players[msg.playerid_1].hero.name})
+    return {'buybacks':bbs}
 
 
 def main():
@@ -38,10 +39,11 @@ def main():
     replay = StreamBinding.from_file(dem_file, start_tick="pregame")
     match_id = replay.info.match_id
     #match = get_match_details(match_id)
+    match = db.find_one({'match_id': match_id}) or {}
     bbs = extract_buybacks(replay)
     print bbs
-    #match['wards'] = wards
-    #result = db.update({'match_id': match_id}, match, upsert=True)
+    match.update(bbs)
+    result = db.update({'match_id': match_id}, match, upsert=True)
 
 if __name__ == '__main__':
     main()

@@ -4,6 +4,7 @@
 from tarrasque import *
 import os
 import argparse
+import pdb
 
 # helpers
 from db import db
@@ -11,6 +12,13 @@ from api import get_match_details
 
 # analysis functions
 from ward_map import extract_wards
+from buyback import extract_buybacks
+from escapes import extract_escapes
+from gold_xp_graphs import extract_graphs
+from hero_position import extract_positions
+from kill_list import extract_kill_list
+from roshan import extract_roshans
+from runes import extract_runes
 
 
 def endswith(array, ending):
@@ -38,14 +46,25 @@ def main():
             print '  match id {}'.format(match_id)
 
             if args.f or db.find_one({'match_id': match_id}) is None:
-                match = get_match_details(match_id)
-                print '  match details: {} vs {}, radiant_win: {}'.format(match.get('radiant_name', ''), match.get('dire_name', ''), match['radiant_win'])
+                #match = get_match_details(match_id)
+                #print '  match details: {} vs {}, radiant_win: {}'.format(match.get('radiant_name', ''), match.get('dire_name', ''), match['radiant_win'])
+                match = {'match_id': match_id}
 
                 wards = extract_wards(replay)
-                print '  contains {} wards'.format(len(wards))
+                buybacks = extract_buybacks(replay)
+                escapes = extract_escapes(replay)
+                xp, gold = extract_graphs(replay)
+                positions = extract_positions(replay)
+                kill_list = extract_kill_list(replay)
+                roshan = extract_roshans(replay)
+                runes = extract_runes(replay)
+                try:
+                    collected = [wards, buybacks, escapes, xp, gold, positions, kill_list, roshan, runes]
+                    [match.update(x) for x in collected]
+                    result = db.update({'match_id': match_id}, match, upsert=True)
+                except:
+                    pdb.set_trace()
 
-                match['wards'] = wards
-                result = db.update({'match_id': match_id}, match, upsert=True)
                 print '  result: {}'.format(result)
             else:
                 print '  match already exists in database, skipping...'

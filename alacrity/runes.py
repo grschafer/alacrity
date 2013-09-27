@@ -23,9 +23,11 @@ def extract_runes(replay):
     runes = {}
     rune_actions = []
     TEAMS = {2: 'radiant', 3: 'dire'}
-    PLAYERS = {p.index:p.name for p in replay.players}
-    for tick in replay.iter_ticks(start="pregame", step=1800):
-        print 'tick: {}'.format(tick)
+    replay.go_to_tick('postgame')
+    players = {p.index:p.hero.name for p in replay.players}
+
+    for tick in replay.iter_ticks(start="pregame", step=30):
+        #print 'tick: {}'.format(tick)
         runes_spawned = Rune.get_all(replay)
         for r in runes_spawned:
             if r.ehandle not in runes:
@@ -36,10 +38,10 @@ def extract_runes(replay):
         pickups = [x[1] for x in msgs if x[0] == 66 and x[1].type == 22]
         bottles = [x[1] for x in msgs if x[0] == 66 and x[1].type == 23]
         for msg in pickups:
-            rune_actions.append({'tick':tick, 'event':'rune_pickup', 'rune_type': RUNES[msg.value], 'player':PLAYERS[msg.playerid_1]})
+            rune_actions.append({'tick':tick, 'event':'rune_pickup', 'rune_type': RUNES[msg.value], 'hero':players[msg.playerid_1]})
         for msg in bottles:
-            rune_actions.append({'tick':tick, 'event':'rune_bottle', 'rune_type': RUNES[msg.value], 'player':PLAYERS[msg.playerid_1]})
-    return runes
+            rune_actions.append({'tick':tick, 'event':'rune_bottle', 'rune_type': RUNES[msg.value], 'hero':players[msg.playerid_1]})
+    return {'runes':rune_actions}
 
 
 def main():
@@ -47,10 +49,11 @@ def main():
     replay = StreamBinding.from_file(dem_file, start_tick="pregame")
     match_id = replay.info.match_id
     #match = get_match_details(match_id)
+    match = db.find_one({'match_id': match_id}) or {}
     runes = extract_runes(replay)
+    match.update(runes)
     print runes
-    #match['wards'] = wards
-    #result = db.update({'match_id': match_id}, match, upsert=True)
+    result = db.update({'match_id': match_id}, match, upsert=True)
 
 if __name__ == '__main__':
     main()

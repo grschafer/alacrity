@@ -42,15 +42,17 @@ STREAK_GOLD = Streak()
 # http://dota2.gamepedia.com/Gold#Kills
 # GOLD_AREA(# heroes within 1200, level of enemy killed)
 GOLD_AREA = lambda num, level: _GOLD_AREA[num](level) * num
-_GOLD_AREA = {1: lambda level: 125 + level * 12,
-             2: lambda level: (40 + level * 10),
-             3: lambda level: (10 + level * 6),
-             4: lambda level: (level * 6),
-             5: lambda level: (level * 6)}
+_GOLD_AREA = {0: lambda level: 0,
+              1: lambda level: 125 + level * 12,
+              2: lambda level: (40 + level * 10),
+              3: lambda level: (10 + level * 6),
+              4: lambda level: (level * 6),
+              5: lambda level: (level * 6)}
 # http://dota2.gamepedia.com/Experience#Experience_Formula
 # XP_AREA(# heroes within 1200, level of enemy killed)
 XP_AREA = lambda num, level: int(_XP_AREA[num](level) * num)
-_XP_AREA = {1: lambda level: 220 if level == 0 else (level * 20 + _XP_AREA[1](level - 1) if level < 5 else 120 * level - 80),
+_XP_AREA = {0: lambda level: _XP_AREA[1](level),
+            1: lambda level: 220 if level == 0 else (level * 20 + _XP_AREA[1](level - 1) if level < 5 else 120 * level - 80),
             2: lambda level: 140 if level == 0 else (level * 10 + 5 + _XP_AREA[2](level - 1) if level < 5 else 65 * level - 10),
             3: lambda level: 64 + 1./6 if level == 0 else (level * (121./18) + _XP_AREA[3](level - 1) if level < 5 else (121 * level - 110)/3.),
             4: lambda level: 45 if level == 0 else (level * 5 + _XP_AREA[4](level - 1) if level < 5 else 30 * level - 30),
@@ -186,8 +188,8 @@ def extract_kill_list(replay):
             pdb.set_trace()
 
     print deaths
-    pdb.set_trace()
-    return deaths
+    #pdb.set_trace()
+    return {'kill_list':deaths}
 
 
 def main():
@@ -195,10 +197,11 @@ def main():
     replay = StreamBinding.from_file(dem_file, start_tick="pregame")
     match_id = replay.info.match_id
     #match = get_match_details(match_id)
+    match = db.find_one({'match_id': match_id}) or {}
     kill_list = extract_kill_list(replay)
     print kill_list
-    #match['wards'] = wards
-    #result = db.update({'match_id': match_id}, match, upsert=True)
+    match.update(kill_list)
+    result = db.update({'match_id': match_id}, match, upsert=True)
 
 if __name__ == '__main__':
     main()

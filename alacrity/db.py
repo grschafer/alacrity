@@ -2,8 +2,9 @@ import pymongo
 from ConfigParser import ConfigParser
 import os
 
+
 _config = ConfigParser()
-_config_path = os.path.join(__file__[:__file__.rindex('/')], 'config.cfg')
+_config_path = os.path.join('config.cfg')
 _config.read(_config_path)
 
 def _get_mongo_connection():

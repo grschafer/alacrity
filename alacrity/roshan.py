@@ -22,23 +22,24 @@ from collections import defaultdict
 def extract_roshans(replay):
     roshs = []
     TEAMS = {2: 'radiant', 3: 'dire'}
-    PLAYERS = {p.index:p.name for p in replay.players}
-    for tick in replay.iter_ticks(start="pregame", step=1800):
-        print 'tick: {}'.format(tick)
+    replay.go_to_tick('postgame')
+    players = {p.index:p.hero.name for p in replay.players}
+    for tick in replay.iter_ticks(start="pregame", step=30):
+        #print 'tick: {}'.format(tick)
         msgs = replay.user_messages
         rosh_deaths = [x[1] for x in msgs if x[0] == 66 and x[1].type == 9]
         aegis_take = [x[1] for x in msgs if x[0] == 66 and x[1].type == 8]
         aegis_snatch = [x[1] for x in msgs if x[0] == 66 and x[1].type == 53]
         aegis_deny = [x[1] for x in msgs if x[0] == 66 and x[1].type == 51]
         for msg in rosh_deaths:
-            roshs.append({'tick':tick, 'event':'roshan_kill', 'team':TEAMS[msg.playerid_1]})
+            roshs.append({'tick':tick, 'event':'roshan_kill', 'hero':players[msg.playerid_1]})
         for msg in aegis_take:
-            roshs.append({'tick':tick, 'event':'aegis', 'player':PLAYERS[msg.playerid_1]})
+            roshs.append({'tick':tick, 'event':'aegis', 'hero':players[msg.playerid_1]})
         for msg in aegis_snatch:
-            roshs.append({'tick':tick, 'event':'aegis_stolen', 'player':PLAYERS[msg.playerid_1]})
+            roshs.append({'tick':tick, 'event':'aegis_stolen', 'hero':players[msg.playerid_1]})
         for msg in aegis_deny:
-            roshs.append({'tick':tick, 'event':'denied_aegis', 'player':PLAYERS[msg.playerid_1]})
-    return roshs
+            roshs.append({'tick':tick, 'event':'denied_aegis', 'hero':players[msg.playerid_1]})
+    return {'roshans':roshs}
 
 
 def main():
@@ -46,10 +47,11 @@ def main():
     replay = StreamBinding.from_file(dem_file, start_tick="pregame")
     match_id = replay.info.match_id
     #match = get_match_details(match_id)
+    match = db.find_one({'match_id': match_id}) or {}
     roshs = extract_roshans(replay)
     print roshs
-    #match['wards'] = wards
-    #result = db.update({'match_id': match_id}, match, upsert=True)
+    match.update(roshs)
+    result = db.update({'match_id': match_id}, match, upsert=True)
 
 if __name__ == '__main__':
     main()
