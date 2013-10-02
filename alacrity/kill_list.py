@@ -50,7 +50,7 @@ _GOLD_AREA = {0: lambda level: 0,
               5: lambda level: (level * 6)}
 # http://dota2.gamepedia.com/Experience#Experience_Formula
 # XP_AREA(# heroes within 1200, level of enemy killed)
-XP_AREA = lambda num, level: int(_XP_AREA[num](level) * num)
+XP_AREA = lambda num, level: int(_XP_AREA[num](level) * (num if num > 0 else 1))
 _XP_AREA = {0: lambda level: _XP_AREA[1](level),
             1: lambda level: 220 if level == 0 else (level * 20 + _XP_AREA[1](level - 1) if level < 5 else 120 * level - 80),
             2: lambda level: 140 if level == 0 else (level * 10 + 5 + _XP_AREA[2](level - 1) if level < 5 else 65 * level - 10),

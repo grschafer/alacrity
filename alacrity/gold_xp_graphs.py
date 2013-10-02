@@ -20,7 +20,7 @@ def extract_graphs(replay):
     replay.go_to_tick('postgame')
     player_hero_map = {p.index:p.hero.name for p in replay.players}
 
-    for tick in replay.iter_ticks(start="pregame", step=300):
+    for tick in replay.iter_ticks(start="pregame", end="postgame", step=300):
         if replay.info.pausing_team:
             continue
         xp_dict['tick'].append(tick)

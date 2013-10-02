@@ -19,6 +19,7 @@ from hero_position import extract_positions
 from kill_list import extract_kill_list
 from roshan import extract_roshans
 from runes import extract_runes
+from scoreboard import extract_scoreboards
 
 
 def endswith(array, ending):
@@ -58,8 +59,9 @@ def main():
                 kill_list = extract_kill_list(replay)
                 roshan = extract_roshans(replay)
                 runes = extract_runes(replay)
+                scoreboards = extract_runes(replay)
                 try:
-                    collected = [wards, buybacks, escapes, xp, gold, positions, kill_list, roshan, runes]
+                    collected = [wards, buybacks, escapes, xp, gold, positions, kill_list, roshan, runes, scoreboards]
                     [match.update(x) for x in collected]
                     result = db.update({'match_id': match_id}, match, upsert=True)
                 except:

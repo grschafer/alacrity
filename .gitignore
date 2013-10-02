@@ -43,3 +43,6 @@ replays/*
 
 # config
 config.cfg
+
+# pycharm
+.idea
