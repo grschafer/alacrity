@@ -46,8 +46,8 @@ def extract_scoreboards(replay):
                     'g':  pl.total_gold,
                     'lh': pl.last_hits,
                     'dn': pl.denies,
-                    'gpm': 60 * pl.earned_gold / (replay.info.game_time - gst) if game_started else 0,
-                    'xpm': 60 * pl.hero.xp / (replay.info.game_time - gst) if game_started else 0
+                    'gpm': int(60 * pl.earned_gold / (replay.info.game_time - gst) if game_started else 0),
+                    'xpm': int(60 * pl.hero.xp / (replay.info.game_time - gst) if game_started else 0)
                 }
             print "{}, {}".format(tick, len(scoreboard))
             scoreboards.append(scoreboard)
