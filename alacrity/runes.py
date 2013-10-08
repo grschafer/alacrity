@@ -26,7 +26,7 @@ def extract_runes(replay):
     replay.go_to_tick('postgame')
     players = {p.index:p.hero.name for p in replay.players}
 
-    for tick in replay.iter_ticks(start="pregame", step=30):
+    for tick in replay.iter_ticks(start="pregame", end="postgame", step=30):
         #print 'tick: {}'.format(tick)
         runes_spawned = Rune.get_all(replay)
         for r in runes_spawned:

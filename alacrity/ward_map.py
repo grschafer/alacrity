@@ -20,7 +20,7 @@ def extract_wards(replay):
     Returns [{x:1234, y:-1234, team:radiant|dire, tick:2468}, ...]
     """
     wards = {}
-    for tick in replay.iter_ticks(start="pregame", step=300):
+    for tick in replay.iter_ticks(start="pregame", end="postgame", step=300):
         wardlist = Ward.get_all(replay)
         for w in wardlist:
             if w.ehandle not in wards:

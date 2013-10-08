@@ -20,7 +20,7 @@ def extract_escapes(replay):
     replay.go_to_tick('postgame')
     players = {p.index:p for p in replay.players}
 
-    for tick in replay.iter_ticks(start="pregame", step=30):
+    for tick in replay.iter_ticks(start="pregame", end="postgame", step=30):
         try:
             # add hero to watchlist if they're alive, under 5%, and not already on the watchlist
             for pl in replay.players:

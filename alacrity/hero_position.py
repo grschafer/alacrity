@@ -14,7 +14,7 @@ def extract_positions(replay):
     pos = defaultdict(list)
     x = y = None
     #pdb.set_trace()
-    for tick in replay.iter_ticks(start="pregame", step=30):
+    for tick in replay.iter_ticks(start="pregame", end="postgame", step=30):
         if replay.info.pausing_team:
             continue
         for pl in replay.players:

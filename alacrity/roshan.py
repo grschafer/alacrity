@@ -24,7 +24,7 @@ def extract_roshans(replay):
     TEAMS = {2: 'radiant', 3: 'dire'}
     replay.go_to_tick('postgame')
     players = {p.index:p.hero.name for p in replay.players}
-    for tick in replay.iter_ticks(start="pregame", step=30):
+    for tick in replay.iter_ticks(start="pregame", end="postgame", step=30):
         #print 'tick: {}'.format(tick)
         msgs = replay.user_messages
         rosh_deaths = [x[1] for x in msgs if x[0] == 66 and x[1].type == 9]

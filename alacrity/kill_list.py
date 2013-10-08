@@ -131,7 +131,7 @@ def extract_kill_list(replay):
     deaths = []
     # ALSO NEED DICTS OF RAW NAMES (npc_dota_hero_nevermore) AND ENT_INDEX (2)?
     # raw names needs to include towers, creeps (lane/neutral), and fountain
-    for tick in replay.iter_ticks(start="pregame", step=30):
+    for tick in replay.iter_ticks(start="pregame", end="postgame", step=30):
         try:
             #print 'tick: {}, gametime: {}'.format(tick, replay.info.game_time - 90)
             evts = replay.game_events

@@ -46,3 +46,7 @@ config.cfg
 
 # pycharm
 .idea
+
+*.png
+utils/items.txt
+utils/npc_heroes.txt
