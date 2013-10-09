@@ -27,7 +27,7 @@ def extract_positions(replay):
             name = player_hero_map[pl.index]
             x,y = pl.hero.position if pl.hero else (0,0)
             pos[name].append((int(x),int(y)))
-        pos['tick'].append(tick)
+        pos['time'].append(replay.info.game_time)
 
     return {'positions':dict(pos)}
 

@@ -36,7 +36,7 @@ def extract_buybacks(replay):
         for msg in buybacks:
             bb_cost = buyback_cost([p for p in replay.players if p.index == msg.playerid_1][0], replay.info)
             name = player_hero_map[msg.playerid_1]
-            bbs.append({'tick':tick, 'cost':bb_cost, 'hero':name})
+            bbs.append({'time':replay.info.game_time, 'cost':bb_cost, 'hero':name})
     return {'buybacks':bbs}
 
 

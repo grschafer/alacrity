@@ -157,7 +157,7 @@ def extract_kill_list(replay):
                 firstblood = True if len(deaths) == 0 else False
                 deny = True if killers[0].team == victim.team else False
                 gold, xp = gold_xp_from_kill(replay, victim, firstblood=firstblood, deny=deny)
-                d = {'tick': tick, 'hero':HeroNameDict[death.target_name]['name'], 'bounty_gold': gold, 'bounty_xp': xp, 'deny': deny, 'x': victim.hero.position[0], 'y': victim.hero.position[1]}
+                d = {'time': replay.info.game_time, 'hero':HeroNameDict[death.target_name]['name'], 'bounty_gold': gold, 'bounty_xp': xp, 'deny': deny, 'x': victim.hero.position[0], 'y': victim.hero.position[1]}
                 deaths.append(d)
                 print 'tick {}: {}'.format(tick, d)
         except Exception as e:
@@ -175,8 +175,9 @@ def extract_kill_list(replay):
     for death in deaths:
         try:
             killers = defaultdict(lambda: defaultdict(int))
-            print 'going to tick {} for death {}'.format(death['tick'] - 900, death)
-            for tick in replay.iter_ticks(start=death['tick'] - 900, step=30):
+            print 'going to time {} for death {}'.format(death['time'] - 30, death)
+            tick = replay.go_to_time(death['time'] - 30)
+            for tick in replay.iter_ticks(start=tick, step=30):
                 evts = replay.game_events
                 #TODO: damage counts damage against all meepos (meepo has which_meepo property)
                 combats = [x for x in evts if isinstance(x, CombatLogMessage) and x.type == 'damage' and x.target_name == death['hero']]
@@ -186,7 +187,7 @@ def extract_kill_list(replay):
                     except KeyError:
                         name = c.attacker_name
                     killers[name][c.inflictorname] += c.value
-                if tick > death['tick']:
+                if replay.info.game_time > death['time']:
                     print killers
                     death['killers'] = killers
                     break

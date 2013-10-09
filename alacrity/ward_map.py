@@ -28,7 +28,7 @@ def extract_wards(replay):
                         'x': w.position[0],
                         'y': w.position[1],
                         'team': w.team,
-                        'tick': w.tick
+                        'time': replay.info.game_time
                     }
     return {'wards':wards.values()}
 

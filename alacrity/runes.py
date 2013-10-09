@@ -34,15 +34,15 @@ def extract_runes(replay):
         for r in runes_spawned:
             if r.ehandle not in runes:
                 runes[r.ehandle] = 1
-                rune_actions.append({'tick':tick, 'event':'rune_spawn', 'rune_type':RUNES[r.properties[('DT_DOTA_Item_Rune', 'm_iRuneType')]]})
+                rune_actions.append({'time':replay.info.game_time, 'event':'rune_spawn', 'rune_type':RUNES[r.properties[('DT_DOTA_Item_Rune', 'm_iRuneType')]]})
 
         msgs = replay.user_messages
         pickups = [x[1] for x in msgs if x[0] == 66 and x[1].type == 22]
         bottles = [x[1] for x in msgs if x[0] == 66 and x[1].type == 23]
         for msg in pickups:
-            rune_actions.append({'tick':tick, 'event':'rune_pickup', 'rune_type': RUNES[msg.value], 'hero':player_hero_map[msg.playerid_1]})
+            rune_actions.append({'time':replay.info.game_time, 'event':'rune_pickup', 'rune_type': RUNES[msg.value], 'hero':player_hero_map[msg.playerid_1]})
         for msg in bottles:
-            rune_actions.append({'tick':tick, 'event':'rune_bottle', 'rune_type': RUNES[msg.value], 'hero':player_hero_map[msg.playerid_1]})
+            rune_actions.append({'time':replay.info.game_time, 'event':'rune_bottle', 'rune_type': RUNES[msg.value], 'hero':player_hero_map[msg.playerid_1]})
     return {'runes':rune_actions}
 
 

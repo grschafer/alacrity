@@ -28,7 +28,7 @@ def extract_scoreboards(replay):
         if replay.info.pausing_team:
             continue
         try:
-            scoreboard = {'tick':tick}
+            scoreboard = {'time':replay.info.game_time}
             for pl in replay.players:
                 if not pl.hero:
                     continue
