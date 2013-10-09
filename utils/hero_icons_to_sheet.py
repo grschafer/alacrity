@@ -11,6 +11,9 @@ hero_list = {k:v['HeroID'] for k,v in hero_data['DOTAHeroes'].iteritems() \
             if k.startswith('npc_dota_hero') and
                 'HeroID' in v}
 
+width = 128/2 # fullsize: 128
+height = 72/2 # fullsize: 72
+filename = "small_hero_sheet"
 images = []
 for name,hero_id in hero_list.iteritems():
     # npc_dota_hero_ = 14 characters
@@ -18,20 +21,21 @@ for name,hero_id in hero_list.iteritems():
     img_name = os.path.join('heroes', name + '.png')
     try:
         im = Image.open(img_name)
+        im.thumbnail((width, height), Image.ANTIALIAS)
         images.append((hero_id, im))
     except IOError as e:
         print e
 
 max_id = max(hero_list.values())
-sheet_size = ((max_id + 1) * 128, 72)
+sheet_size = ((max_id + 1) * width, height)
 sheet = Image.new("RGBA", sheet_size)
 for hero_id,img in images:
-    sheet.paste(img, (hero_id * 128, 0))
+    sheet.paste(img, (hero_id * width, 0))
 
-sheet.save('hero_sheet.png')
+sheet.save('{}.png'.format(filename))
 
 
 # make CSS
-with open('hero_sheet.css.erb', 'wb') as f:
+with open('{}.css.erb'.format(filename), 'wb') as f:
     for name,hero_id in hero_list.iteritems():
-        f.write(""".{}-icon {{ background: url('<%= asset_path "hero_sheet.png" %>') no-repeat {}px 0px; width: 128px; height: 72px; }}\n""".format(name, -hero_id * 128))
+        f.write(""".{}-icon {{ background: url('<%= asset_path "{}.png" %>') no-repeat {}px 0px; width: {}px; height: {}px; }}\n""".format(name, filename, -hero_id * width, width, height))
