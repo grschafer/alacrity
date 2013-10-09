@@ -6,7 +6,7 @@ import sys
 from api import get_match_details
 from db import db
 from inspect_props import dict_to_csv
-from utils import hero_id_to_raw
+from utils import HeroNameDict, unitIdx
 
 
 import traceback
@@ -18,10 +18,11 @@ import pdb
 def extract_scoreboards(replay):
     scoreboards = []
     replay.go_to_tick('postgame')
+    player_hero_map = {p.index:HeroNameDict[unitIdx(p.hero)]['name'] for p in replay.players}
     # add +1 to avoid div by zero if we land on the game_start_time tick
     gst = replay.info.game_start_time + 1
     # TODO: reverse key,value?
-    players = {p.name.replace('.',u'\uff0E'):p.hero.name for p in replay.players}
+    players = {p.name.replace('.',u'\uff0E'):player_hero_map[p.index] for p in replay.players}
 
     for tick in replay.iter_ticks(start="pregame", end="postgame", step=450):
         if replay.info.pausing_team:
@@ -31,8 +32,9 @@ def extract_scoreboards(replay):
             for pl in replay.players:
                 if not pl.hero:
                     continue
-                game_started = replay.info.game_time < gst
-                scoreboard[pl.hero.name] = {
+                game_started = replay.info.game_time > gst
+                name = HeroNameDict[unitIdx(pl.hero)]['name']
+                scoreboard[name] = {
                     'l': pl.hero.level,
                     'k': pl.kills,
                     'd': pl.deaths,
@@ -49,7 +51,7 @@ def extract_scoreboards(replay):
                     'gpm': int(60 * pl.earned_gold / (replay.info.game_time - gst) if game_started else 0),
                     'xpm': int(60 * pl.hero.xp / (replay.info.game_time - gst) if game_started else 0)
                 }
-            print "{}, {}".format(tick, len(scoreboard))
+            #print "{}, {}".format(tick, len(scoreboard))
             scoreboards.append(scoreboard)
         except:
             exc_type, exc_value, exc_traceback = sys.exc_info()

@@ -6,6 +6,7 @@ import sys
 from api import get_match_details
 from db import db
 from inspect_props import dict_to_csv
+from utils import HeroNameDict, unitIdx
 
 
 import pdb
@@ -16,9 +17,10 @@ def extract_graphs(replay):
     gold_dict = defaultdict(list)
     xp = None
     gold = None
+    name = None
 
     replay.go_to_tick('postgame')
-    player_hero_map = {p.index:p.hero.name for p in replay.players}
+    player_hero_map = {p.index:HeroNameDict[unitIdx(p.hero)]['name'] for p in replay.players}
 
     for tick in replay.iter_ticks(start="pregame", end="postgame", step=300):
         if replay.info.pausing_team:
@@ -26,10 +28,11 @@ def extract_graphs(replay):
         xp_dict['tick'].append(tick)
         gold_dict['tick'].append(tick)
         for player in replay.players:
+            name = player_hero_map[player.index]
             xp = player.hero.xp if player.hero else 0
-            xp_dict[player_hero_map[player.index]].append(xp)
+            xp_dict[name].append(xp)
             gold = player.earned_gold
-            gold_dict[player_hero_map[player.index]].append(gold)
+            gold_dict[name].append(gold)
 
     return {'xp_graph':dict(xp_dict)}, {'gold_graph':dict(gold_dict)}
 

@@ -6,6 +6,7 @@ import sys
 from api import get_match_details
 from db import db
 from inspect_props import dict_to_csv
+from utils import HeroNameDict, unitIdx
 
 
 import traceback
@@ -22,8 +23,10 @@ from collections import defaultdict
 def extract_roshans(replay):
     roshs = []
     TEAMS = {2: 'radiant', 3: 'dire'}
+
     replay.go_to_tick('postgame')
-    players = {p.index:p.hero.name for p in replay.players}
+    player_hero_map = {p.index:HeroNameDict[unitIdx(p.hero)]['name'] for p in replay.players}
+
     for tick in replay.iter_ticks(start="pregame", end="postgame", step=30):
         #print 'tick: {}'.format(tick)
         msgs = replay.user_messages
@@ -32,13 +35,13 @@ def extract_roshans(replay):
         aegis_snatch = [x[1] for x in msgs if x[0] == 66 and x[1].type == 53]
         aegis_deny = [x[1] for x in msgs if x[0] == 66 and x[1].type == 51]
         for msg in rosh_deaths:
-            roshs.append({'tick':tick, 'event':'roshan_kill', 'hero':players[msg.playerid_1]})
+            roshs.append({'tick':tick, 'event':'roshan_kill', 'hero':player_hero_map[msg.playerid_1]})
         for msg in aegis_take:
-            roshs.append({'tick':tick, 'event':'aegis', 'hero':players[msg.playerid_1]})
+            roshs.append({'tick':tick, 'event':'aegis', 'hero':player_hero_map[msg.playerid_1]})
         for msg in aegis_snatch:
-            roshs.append({'tick':tick, 'event':'aegis_stolen', 'hero':players[msg.playerid_1]})
+            roshs.append({'tick':tick, 'event':'aegis_stolen', 'hero':player_hero_map[msg.playerid_1]})
         for msg in aegis_deny:
-            roshs.append({'tick':tick, 'event':'denied_aegis', 'hero':players[msg.playerid_1]})
+            roshs.append({'tick':tick, 'event':'denied_aegis', 'hero':player_hero_map[msg.playerid_1]})
     return {'roshans':roshs}
 
 

@@ -6,6 +6,7 @@ import sys
 from api import get_match_details
 from db import db
 from inspect_props import dict_to_csv
+from utils import HeroNameDict, unitIdx
 
 
 import traceback
@@ -23,8 +24,9 @@ def extract_runes(replay):
     runes = {}
     rune_actions = []
     TEAMS = {2: 'radiant', 3: 'dire'}
+
     replay.go_to_tick('postgame')
-    players = {p.index:p.hero.name for p in replay.players}
+    player_hero_map = {p.index:HeroNameDict[unitIdx(p.hero)]['name'] for p in replay.players}
 
     for tick in replay.iter_ticks(start="pregame", end="postgame", step=30):
         #print 'tick: {}'.format(tick)
@@ -38,9 +40,9 @@ def extract_runes(replay):
         pickups = [x[1] for x in msgs if x[0] == 66 and x[1].type == 22]
         bottles = [x[1] for x in msgs if x[0] == 66 and x[1].type == 23]
         for msg in pickups:
-            rune_actions.append({'tick':tick, 'event':'rune_pickup', 'rune_type': RUNES[msg.value], 'hero':players[msg.playerid_1]})
+            rune_actions.append({'tick':tick, 'event':'rune_pickup', 'rune_type': RUNES[msg.value], 'hero':player_hero_map[msg.playerid_1]})
         for msg in bottles:
-            rune_actions.append({'tick':tick, 'event':'rune_bottle', 'rune_type': RUNES[msg.value], 'hero':players[msg.playerid_1]})
+            rune_actions.append({'tick':tick, 'event':'rune_bottle', 'rune_type': RUNES[msg.value], 'hero':player_hero_map[msg.playerid_1]})
     return {'runes':rune_actions}
 
 

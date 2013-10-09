@@ -6,7 +6,7 @@ import sys
 from api import get_match_details
 from db import db
 from inspect_props import dict_to_csv
-from utils import hero_id_to_raw
+from utils import HeroNameDict, unitIdx
 
 
 import traceback
@@ -18,6 +18,7 @@ def extract_escapes(replay):
     near_deaths = []
     watchlist = []
     replay.go_to_tick('postgame')
+    player_hero_map = {p.index:HeroNameDict[unitIdx(p.hero)]['name'] for p in replay.players}
     players = {p.index:p for p in replay.players}
 
     for tick in replay.iter_ticks(start="pregame", end="postgame", step=30):
@@ -25,7 +26,7 @@ def extract_escapes(replay):
             # add hero to watchlist if they're alive, under 5%, and not already on the watchlist
             for pl in replay.players:
                 if pl.hero and pl.hero.health < 0.08 * pl.hero.max_health and pl.hero.life_state == "alive" and pl.index not in [x['id'] for x in watchlist]:
-                    watchlist.append({'hero': pl.hero.name, 'id': pl.index, 'tick': tick, 'escape': []})
+                    watchlist.append({'hero': player_hero_map(pl.index), 'id': pl.index, 'tick': tick, 'escape': []})
                     print '{}: watching {} at {} hp, current set: {}'.format(tick, pl.hero.name, pl.hero.health, [x['hero'] for x in watchlist])
 
             # remove watched "escapes" where the hero died within 30 seconds of being under 5% hp

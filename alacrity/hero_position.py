@@ -6,6 +6,7 @@ import sys
 from api import get_match_details
 from db import db
 from collections import defaultdict
+from utils import HeroNameDict, unitIdx
 
 import traceback
 import pdb
@@ -13,13 +14,19 @@ import pdb
 def extract_positions(replay):
     pos = defaultdict(list)
     x = y = None
+    name = None
     #pdb.set_trace()
+
+    replay.go_to_tick('postgame')
+    player_hero_map = {p.index:HeroNameDict[unitIdx(p.hero)]['name'] for p in replay.players}
+
     for tick in replay.iter_ticks(start="pregame", end="postgame", step=30):
         if replay.info.pausing_team:
             continue
         for pl in replay.players:
+            name = player_hero_map[pl.index]
             x,y = pl.hero.position if pl.hero else (0,0)
-            pos[pl.hero.name].append((int(x),int(y)))
+            pos[name].append((int(x),int(y)))
         pos['tick'].append(tick)
 
     return {'positions':dict(pos)}

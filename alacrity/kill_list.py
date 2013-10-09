@@ -6,7 +6,7 @@ import sys
 from api import get_match_details
 from db import db
 from inspect_props import dict_to_csv
-from utils import hero_id_to_raw
+from utils import HeroNameDict, unitIdx
 
 
 import traceback
@@ -131,6 +131,9 @@ def extract_kill_list(replay):
     deaths = []
     # ALSO NEED DICTS OF RAW NAMES (npc_dota_hero_nevermore) AND ENT_INDEX (2)?
     # raw names needs to include towers, creeps (lane/neutral), and fountain
+    replay.go_to_tick('postgame')
+    player_hero_map = {p.index:HeroNameDict[unitIdx(p.hero)]['name'] for p in replay.players}
+
     for tick in replay.iter_ticks(start="pregame", end="postgame", step=30):
         try:
             #print 'tick: {}, gametime: {}'.format(tick, replay.info.game_time - 90)
@@ -144,7 +147,7 @@ def extract_kill_list(replay):
             reincarnating = [p for p in replay.players if p.hero and p.hero.properties[(u'DT_DOTA_BaseNPC_Hero', u'm_bReincarnating')] == 1]
             if len(reincarnating) > 0:
                 print '!!reincarnating:{} {}'.format(reincarnating[0].hero.name, reincarnating[0].index)
-            reincarnating = [hero_id_to_raw[p.hero.properties[(u'DT_DOTA_BaseNPC', u'm_iUnitNameIndex')]] for p in reincarnating]
+            reincarnating = [player_hero_map[p.index] for p in reincarnating]
             cur_deaths = [x for x in cur_deaths if x.target_name not in reincarnating]
 
 
@@ -154,7 +157,7 @@ def extract_kill_list(replay):
                 firstblood = True if len(deaths) == 0 else False
                 deny = True if killers[0].team == victim.team else False
                 gold, xp = gold_xp_from_kill(replay, victim, firstblood=firstblood, deny=deny)
-                d = {'tick': tick, 'hero':death.target_name, 'bounty_gold': gold, 'bounty_xp': xp, 'deny': deny, 'x': victim.hero.position[0], 'y': victim.hero.position[1]}
+                d = {'tick': tick, 'hero':HeroNameDict[death.target_name]['name'], 'bounty_gold': gold, 'bounty_xp': xp, 'deny': deny, 'x': victim.hero.position[0], 'y': victim.hero.position[1]}
                 deaths.append(d)
                 print 'tick {}: {}'.format(tick, d)
         except Exception as e:
@@ -178,7 +181,11 @@ def extract_kill_list(replay):
                 #TODO: damage counts damage against all meepos (meepo has which_meepo property)
                 combats = [x for x in evts if isinstance(x, CombatLogMessage) and x.type == 'damage' and x.target_name == death['hero']]
                 for c in combats:
-                    killers[c.attacker_name][c.inflictorname] += c.value
+                    try:
+                        name = HeroNameDict[c.attacker_name]['name']
+                    except KeyError:
+                        name = c.attacker_name
+                    killers[name][c.inflictorname] += c.value
                 if tick > death['tick']:
                     print killers
                     death['killers'] = killers
