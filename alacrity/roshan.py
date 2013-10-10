@@ -26,6 +26,7 @@ def extract_roshans(replay):
 
     replay.go_to_tick('postgame')
     player_hero_map = {p.index:HeroNameDict[unitIdx(p.hero)]['name'] for p in replay.players}
+    player_team_map = {p.index: p.hero.team for p in replay.players}
 
     for tick in replay.iter_ticks(start="pregame", end="postgame", step=30):
         #print 'tick: {}'.format(tick)
@@ -35,13 +36,13 @@ def extract_roshans(replay):
         aegis_snatch = [x[1] for x in msgs if x[0] == 66 and x[1].type == 53]
         aegis_deny = [x[1] for x in msgs if x[0] == 66 and x[1].type == 51]
         for msg in rosh_deaths:
-            roshs.append({'time':replay.info.game_time, 'event':'roshan_kill', 'hero':player_hero_map[msg.playerid_1]})
+            roshs.append({'time':replay.info.game_time, 'event':'roshan_kill', 'team':player_team_map[msg.playerid_1]})
         for msg in aegis_take:
-            roshs.append({'time':replay.info.game_time, 'event':'aegis', 'hero':player_hero_map[msg.playerid_1]})
+            roshs.append({'time':replay.info.game_time, 'event':'aegis_pickup', 'hero':player_hero_map[msg.playerid_1]})
         for msg in aegis_snatch:
             roshs.append({'time':replay.info.game_time, 'event':'aegis_stolen', 'hero':player_hero_map[msg.playerid_1]})
         for msg in aegis_deny:
-            roshs.append({'time':replay.info.game_time, 'event':'denied_aegis', 'hero':player_hero_map[msg.playerid_1]})
+            roshs.append({'time':replay.info.game_time, 'event':'aegis_denied', 'hero':player_hero_map[msg.playerid_1]})
     return {'roshans':roshs}
 
 

@@ -77,22 +77,6 @@ def gold_xp_from_kill(replay, victim, firstblood=False, deny=False):
 def index_to_id(replay, idx):
     return replay.world.find_index(idx)[('DT_DOTAPlayer', 'm_iPlayerID')]
 
-NAME_EXCEPTIONS = {"npc_dota_hero_elder_titan": "Elder_ Titan",
-                   "npc_dota_hero_nyx_assassin": "Nyx_ Assassin",
-                   "npc_dota_hero_legion_commander": "Legion_ Commander",
-                   "npc_dota_hero_life_stealer": "Life_ Stealer",
-                   "npc_dota_hero_obsidian_destroyer": "Obsidian_ Destroyer",
-                   "npc_dota_hero_ogre_magi": "Ogre_ Magi",
-                   "npc_dota_hero_shadow_demon": "Shadow_ Demon",
-                   "npc_dota_hero_skywrath_mage": "Skywrath_ Mage",
-                   "npc_dota_hero_vengefulspirit": "Vengeful Spirit"}
-def raw_name_to_hero_name(raw):
-    if raw in NAME_EXCEPTIONS:
-        return NAME_EXCEPTIONS[raw]
-    raw = raw.replace("npc_dota_hero_", "")
-    words = raw.split('_')
-    name = ' '.join([x.capitalize() for x in words])
-    return name
 # HERO NAME: hero.property[(u'DT_DOTA_BaseNPC', u'm_iUnitNameIndex')] for indexing into GetHeroes API call
 
 def get_gold_overheads(replay):
@@ -150,14 +134,13 @@ def extract_kill_list(replay):
             reincarnating = [player_hero_map[p.index] for p in reincarnating]
             cur_deaths = [x for x in cur_deaths if x.target_name not in reincarnating]
 
-
             for death in cur_deaths:
-                victim = [x for x in replay.players if x.hero.name == raw_name_to_hero_name(death.target_name)][0]
+                victim = [x for x in replay.players if HeroNameDict[unitIdx(x.hero)]['name'] == death.target_name][0]
                 killers = get_killers(replay, victim)
                 firstblood = True if len(deaths) == 0 else False
                 deny = True if killers[0].team == victim.team else False
                 gold, xp = gold_xp_from_kill(replay, victim, firstblood=firstblood, deny=deny)
-                d = {'time': replay.info.game_time, 'hero':HeroNameDict[death.target_name]['name'], 'bounty_gold': gold, 'bounty_xp': xp, 'deny': deny, 'x': victim.hero.position[0], 'y': victim.hero.position[1]}
+                d = {'time': replay.info.game_time, 'hero':HeroNameDict[death.target_name]['name'], 'bounty_gold': gold, 'bounty_xp': xp, 'event': 'deny' if deny else 'kill'}
                 deaths.append(d)
                 print 'tick {}: {}'.format(tick, d)
         except Exception as e:

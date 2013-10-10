@@ -51,16 +51,17 @@ def main():
                 #print '  match details: {} vs {}, radiant_win: {}'.format(match.get('radiant_name', ''), match.get('dire_name', ''), match['radiant_win'])
                 #match = {'match_id': match_id}
 
-                wards = extract_wards(replay)
-                buybacks = extract_buybacks(replay)
-                #escapes = extract_escapes(replay)
-                xp, gold = extract_graphs(replay)
-                positions = extract_positions(replay)
-                kill_list = extract_kill_list(replay)
-                roshan = extract_roshans(replay)
-                runes = extract_runes(replay)
-                scoreboards = extract_scoreboards(replay)
                 try:
+                    wards = extract_wards(replay)
+                    buybacks = extract_buybacks(replay)
+                    #escapes = extract_escapes(replay)
+                    xp, gold = extract_graphs(replay)
+                    positions = extract_positions(replay)
+                    kill_list = extract_kill_list(replay)
+                    roshan = extract_roshans(replay)
+                    runes = extract_runes(replay)
+                    scoreboards = extract_scoreboards(replay)
+
                     collected = [wards, buybacks, xp, gold, positions, kill_list, roshan, runes, scoreboards]
                     for x in collected:
                         match.update(x)

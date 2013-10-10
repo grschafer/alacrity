@@ -15,14 +15,28 @@ from collections import defaultdict
 
 import pdb
 
+def get_gpm_xpm(player, replay):
+    if replay.info.game_start_time is None:
+        # then the game hasn't started yet
+        return 0,0
+    gst = replay.info.game_start_time + 1
+    game_started = replay.info.game_time > gst
+    gpm = int(60 * player.earned_gold / (replay.info.game_time - gst) if game_started else 0),
+    xpm = int(60 * player.hero.xp / (replay.info.game_time - gst) if game_started else 0)
+    return gpm,xpm
+
 def extract_scoreboards(replay):
     scoreboards = []
     replay.go_to_tick('postgame')
     player_hero_map = {p.index:HeroNameDict[unitIdx(p.hero)]['name'] for p in replay.players}
     # add +1 to avoid div by zero if we land on the game_start_time tick
-    gst = replay.info.game_start_time + 1
     # TODO: reverse key,value?
-    players = {p.name.replace('.',u'\uff0E'):player_hero_map[p.index] for p in replay.players}
+    TEAMS = {2: 'radiant', 3:'dire'}
+    player_names = {player_hero_map[p.index]:p.name.replace('.',u'\uff0E') for p in replay.players}
+    rad_gpm = sorted([p for p in replay.players if p.team == 'radiant'], key=lambda p: get_gpm_xpm(p, replay)[0], reverse=True)
+    dire_gpm = sorted([p for p in replay.players if p.team == 'dire'], key=lambda p: get_gpm_xpm(p, replay)[0], reverse=True)
+    player_teams = {'radiant': [player_hero_map[p.index] for p in rad_gpm],
+                    'dire': [player_hero_map[p.index] for p in dire_gpm]}
 
     for tick in replay.iter_ticks(start="pregame", end="postgame", step=450):
         if replay.info.pausing_team:
@@ -32,8 +46,8 @@ def extract_scoreboards(replay):
             for pl in replay.players:
                 if not pl.hero:
                     continue
-                game_started = replay.info.game_time > gst
                 name = HeroNameDict[unitIdx(pl.hero)]['name']
+                gpm,xpm = get_gpm_xpm(pl, replay)
                 scoreboard[name] = {
                     'l': pl.hero.level,
                     'k': pl.kills,
@@ -48,8 +62,8 @@ def extract_scoreboards(replay):
                     'g':  pl.total_gold,
                     'lh': pl.last_hits,
                     'dn': pl.denies,
-                    'gpm': int(60 * pl.earned_gold / (replay.info.game_time - gst) if game_started else 0),
-                    'xpm': int(60 * pl.hero.xp / (replay.info.game_time - gst) if game_started else 0)
+                    'gpm': gpm,
+                    'xpm': xpm
                 }
             #print "{}, {}".format(tick, len(scoreboard))
             scoreboards.append(scoreboard)
@@ -59,7 +73,7 @@ def extract_scoreboards(replay):
             pdb.set_trace()
             print 'leaving exception'
 
-    return {'scoreboards':scoreboards, 'player_names': players}
+    return {'scoreboards':scoreboards, 'player_names': player_names, 'player_teams': player_teams}
 
 
 def main():

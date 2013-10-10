@@ -29,7 +29,7 @@ class HeroNameDict(dict):
             else:
                 ret = self.__iter_til_find__('localized_name', key)
         elif isinstance(key, int):
-            ret = self.__iter_til_find__('id', key)
+            ret = self.__iter_til_find__('id', self._exceptions.get(key, key))
         else:
             raise KeyError("key:{} must instead be a string or int".format(key))
         self[key] = ret # memoize
@@ -41,6 +41,15 @@ class HeroNameDict(dict):
         raise KeyError("didn't find hero for field:{} key:{}".format(field, key))
     def __str__(self):
         return "<HeroNameDict object at {}>".format(hex(id(self)))
+
+    # many of the UnitNameIndex values from replays don't correspond to
+    # the IDs for the same heroes in other resources (e.g. WebAPI, npc_heroes.txt)
+    _exceptions = {
+            13: 14, # swap puck and pudge
+            14: 13,
+            5: 6,   # swap drow and crystal maiden
+            6: 5
+            }
 
     _heroes = \
     [{'dt_name': 'DT_DOTA_Unit_Hero_AntiMage',
