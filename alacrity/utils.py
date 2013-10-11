@@ -3,9 +3,9 @@ def unitIdx(ent):
 
 class HeroNameDict(dict):
     """
-    Helper for converting between various hero names/IDs
+    Helper for converting between various hero names/UnitNameIndex
     Usage:
-        HeroNameDict[2] returns hero with ID=2 (Axe)
+        HeroNameDict[1] returns hero with UnitNameIndex=1 (Axe)
         HeroNameDict['npc_dota_hero_axe'] returns Axe
         HeroNameDict['Axe'] returns Axe
         HeroNameDict['DT_DOTA_Unit_Hero_Axe'] returns Axe
@@ -15,6 +15,9 @@ class HeroNameDict(dict):
             id: 2
             localized_name: "Axe"
             name: "npc_dota_hero_axe"
+    Note:
+        UnitNameIndex != HeroID from the API or game files (npc_heroes.txt)
+        However, UnitNameIndex and HeroID do match for indexes/IDs over 30
     Note:
         The lookup is inefficient, but memoized
     """
@@ -29,7 +32,7 @@ class HeroNameDict(dict):
             else:
                 ret = self.__iter_til_find__('localized_name', key)
         elif isinstance(key, int):
-            ret = self.__iter_til_find__('id', self._exceptions.get(key, key))
+            ret = self.__iter_til_find__('id', key)
         else:
             raise KeyError("key:{} must instead be a string or int".format(key))
         self[key] = ret # memoize
@@ -42,50 +45,41 @@ class HeroNameDict(dict):
     def __str__(self):
         return "<HeroNameDict object at {}>".format(hex(id(self)))
 
-    # many of the UnitNameIndex values from replays don't correspond to
-    # the IDs for the same heroes in other resources (e.g. WebAPI, npc_heroes.txt)
-    _exceptions = {
-            13: 14, # swap puck and pudge
-            14: 13,
-            5: 6,   # swap drow and crystal maiden
-            6: 5
-            }
-
     _heroes = \
     [{'dt_name': 'DT_DOTA_Unit_Hero_AntiMage',
-      'id': 1,
+      'id': 2,
       'localized_name': 'Anti-Mage',
       'name': 'npc_dota_hero_antimage'},
      {'dt_name': 'DT_DOTA_Unit_Hero_Axe',
-      'id': 2,
+      'id': 3,
       'localized_name': 'Axe',
       'name': 'npc_dota_hero_axe'},
      {'dt_name': 'DT_DOTA_Unit_Hero_Bane',
-      'id': 3,
+      'id': 4,
       'localized_name': 'Bane',
       'name': 'npc_dota_hero_bane'},
      {'dt_name': 'DT_DOTA_Unit_Hero_Bloodseeker',
-      'id': 4,
+      'id': 5,
       'localized_name': 'Bloodseeker',
       'name': 'npc_dota_hero_bloodseeker'},
      {'dt_name': 'DT_DOTA_Unit_Hero_CrystalMaiden',
-      'id': 5,
+      'id': 6,
       'localized_name': 'Crystal Maiden',
       'name': 'npc_dota_hero_crystal_maiden'},
      {'dt_name': 'DT_DOTA_Unit_Hero_DrowRanger',
-      'id': 6,
+      'id': 7,
       'localized_name': 'Drow Ranger',
       'name': 'npc_dota_hero_drow_ranger'},
      {'dt_name': 'DT_DOTA_Unit_Hero_Earthshaker',
-      'id': 7,
+      'id': 8,
       'localized_name': 'Earthshaker',
       'name': 'npc_dota_hero_earthshaker'},
      {'dt_name': 'DT_DOTA_Unit_Hero_Juggernaut',
-      'id': 8,
+      'id': 9,
       'localized_name': 'Juggernaut',
       'name': 'npc_dota_hero_juggernaut'},
      {'dt_name': 'DT_DOTA_Unit_Hero_Mirana',
-      'id': 9,
+      'id': 10,
       'localized_name': 'Mirana',
       'name': 'npc_dota_hero_mirana'},
      {'dt_name': 'DT_DOTA_Unit_Hero_Nevermore',
@@ -93,55 +87,55 @@ class HeroNameDict(dict):
       'localized_name': 'Shadow Fiend',
       'name': 'npc_dota_hero_nevermore'},
      {'dt_name': 'DT_DOTA_Unit_Hero_Morphling',
-      'id': 10,
+      'id': 12,
       'localized_name': 'Morphling',
       'name': 'npc_dota_hero_morphling'},
      {'dt_name': 'DT_DOTA_Unit_Hero_PhantomLancer',
-      'id': 12,
+      'id': 13,
       'localized_name': 'Phantom Lancer',
       'name': 'npc_dota_hero_phantom_lancer'},
      {'dt_name': 'DT_DOTA_Unit_Hero_Puck',
-      'id': 13,
+      'id': 14,
       'localized_name': 'Puck',
       'name': 'npc_dota_hero_puck'},
      {'dt_name': 'DT_DOTA_Unit_Hero_Pudge',
-      'id': 14,
+      'id': 15,
       'localized_name': 'Pudge',
       'name': 'npc_dota_hero_pudge'},
      {'dt_name': 'DT_DOTA_Unit_Hero_Razor',
-      'id': 15,
+      'id': 16,
       'localized_name': 'Razor',
       'name': 'npc_dota_hero_razor'},
      {'dt_name': 'DT_DOTA_Unit_Hero_SandKing',
-      'id': 16,
+      'id': 17,
       'localized_name': 'Sand King',
       'name': 'npc_dota_hero_sand_king'},
      {'dt_name': 'DT_DOTA_Unit_Hero_StormSpirit',
-      'id': 17,
+      'id': 18,
       'localized_name': 'Storm Spirit',
       'name': 'npc_dota_hero_storm_spirit'},
      {'dt_name': 'DT_DOTA_Unit_Hero_Sven',
-      'id': 18,
+      'id': 19,
       'localized_name': 'Sven',
       'name': 'npc_dota_hero_sven'},
      {'dt_name': 'DT_DOTA_Unit_Hero_Tiny',
-      'id': 19,
+      'id': 20,
       'localized_name': 'Tiny',
       'name': 'npc_dota_hero_tiny'},
      {'dt_name': 'DT_DOTA_Unit_Hero_VengefulSpirit',
-      'id': 20,
+      'id': 21,
       'localized_name': 'Vengeful Spirit',
       'name': 'npc_dota_hero_vengefulspirit'},
      {'dt_name': 'DT_DOTA_Unit_Hero_Windrunner',
-      'id': 21,
+      'id': 22,
       'localized_name': 'Windrunner',
       'name': 'npc_dota_hero_windrunner'},
      {'dt_name': 'DT_DOTA_Unit_Hero_Zuus',
-      'id': 22,
+      'id': 23,
       'localized_name': 'Zeus',
       'name': 'npc_dota_hero_zuus'},
      {'dt_name': 'DT_DOTA_Unit_Hero_Kunkka',
-      'id': 23,
+      'id': 24,
       'localized_name': 'Kunkka',
       'name': 'npc_dota_hero_kunkka'},
      {'dt_name': 'DT_DOTA_Unit_Hero_Lina',
@@ -149,27 +143,27 @@ class HeroNameDict(dict):
       'localized_name': 'Lina',
       'name': 'npc_dota_hero_lina'},
      {'dt_name': 'DT_DOTA_Unit_Hero_Lich',
-      'id': 31,
+      'id': 26,
       'localized_name': 'Lich',
       'name': 'npc_dota_hero_lich'},
      {'dt_name': 'DT_DOTA_Unit_Hero_Lion',
-      'id': 26,
+      'id': 27,
       'localized_name': 'Lion',
       'name': 'npc_dota_hero_lion'},
      {'dt_name': 'DT_DOTA_Unit_Hero_ShadowShaman',
-      'id': 27,
+      'id': 28,
       'localized_name': 'Shadow Shaman',
       'name': 'npc_dota_hero_shadow_shaman'},
      {'dt_name': 'DT_DOTA_Unit_Hero_Slardar',
-      'id': 28,
+      'id': 29,
       'localized_name': 'Slardar',
       'name': 'npc_dota_hero_slardar'},
      {'dt_name': 'DT_DOTA_Unit_Hero_Tidehunter',
-      'id': 29,
+      'id': 30,
       'localized_name': 'Tidehunter',
       'name': 'npc_dota_hero_tidehunter'},
      {'dt_name': 'DT_DOTA_Unit_Hero_WitchDoctor',
-      'id': 30,
+      'id': 31,
       'localized_name': 'Witch Doctor',
       'name': 'npc_dota_hero_witch_doctor'},
      {'dt_name': 'DT_DOTA_Unit_Hero_Riki',
