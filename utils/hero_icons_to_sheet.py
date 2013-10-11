@@ -28,7 +28,7 @@ for name,hero_id in hero_list.iteritems():
 
 max_id = max(hero_list.values())
 sheet_size = ((max_id + 1) * width, height)
-sheet = Image.new("RGBA", sheet_size)
+sheet = Image.new("RGB", sheet_size)
 for hero_id,img in images:
     sheet.paste(img, (hero_id * width, 0))
 
