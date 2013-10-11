@@ -32,7 +32,7 @@ def extract_scoreboards(replay):
     # add +1 to avoid div by zero if we land on the game_start_time tick
     # TODO: reverse key,value?
     TEAMS = {2: 'radiant', 3:'dire'}
-    player_names = {player_hero_map[p.index]:p.name.replace('.',u'\uff0E') for p in replay.players}
+    player_names = {player_hero_map[p.index]:p.name.decode('utf-8').replace('.',u'\uff0E') for p in replay.players}
     rad_gpm = sorted([p for p in replay.players if p.team == 'radiant'], key=lambda p: get_gpm_xpm(p, replay)[0], reverse=True)
     dire_gpm = sorted([p for p in replay.players if p.team == 'dire'], key=lambda p: get_gpm_xpm(p, replay)[0], reverse=True)
     player_teams = {'radiant': [player_hero_map[p.index] for p in rad_gpm],
