@@ -5,6 +5,7 @@ from tarrasque import *
 import os
 import argparse
 import pdb
+import traceback
 
 # helpers
 from db import db
@@ -51,24 +52,30 @@ def main():
                 #print '  match details: {} vs {}, radiant_win: {}'.format(match.get('radiant_name', ''), match.get('dire_name', ''), match['radiant_win'])
                 #match = {'match_id': match_id}
 
-                try:
-                    wards = extract_wards(replay)
-                    buybacks = extract_buybacks(replay)
-                    #escapes = extract_escapes(replay)
-                    xp, gold = extract_graphs(replay)
-                    positions = extract_positions(replay)
-                    kill_list = extract_kill_list(replay)
-                    roshan = extract_roshans(replay)
-                    runes = extract_runes(replay)
-                    scoreboards = extract_scoreboards(replay)
+                extract_funcs = [
+                        extract_wards,
+                        extract_buybacks,
+                        #extract_escapes,
+                        extract_graphs,
+                        extract_positions,
+                        #extract_kill_list,
+                        extract_roshans,
+                        extract_runes,
+                        extract_scoreboards,
+                        ]
+                collected = []
+                for extract in extract_funcs:
+                    try:
+                        collected.append(extract(replay))
+                    except Exception as e:
+                        print 'extraction failed for {}'.format(extract)
+                        traceback.print_exc()
+                        pdb.set_trace()
+                        print 'done'
 
-                    collected = [wards, buybacks, xp, gold, positions, kill_list, roshan, runes, scoreboards]
-                    for x in collected:
-                        match.update(x)
-                    result = db.update({'match_id': match_id}, match, upsert=True)
-                except:
-                    pdb.set_trace()
-
+                for x in collected:
+                    match.update(x)
+                result = db.update({'match_id': match_id}, match, upsert=True)
                 print '  result: {}'.format(result)
             else:
                 print '  match already exists in database, skipping...'
