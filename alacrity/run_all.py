@@ -73,9 +73,15 @@ def main():
                         pdb.set_trace()
                         print 'done'
 
-                for x in collected:
-                    match.update(x)
-                result = db.update({'match_id': match_id}, match, upsert=True)
+                try:
+                    for x in collected:
+                        match.update(x)
+                    result = db.update({'match_id': match_id}, match, upsert=True)
+                except Exception as e:
+                    print 'extraction failed for {}'.format(extract)
+                    traceback.print_exc()
+                    pdb.set_trace()
+                    print 'done'
                 print '  result: {}'.format(result)
             else:
                 print '  match already exists in database, skipping...'
