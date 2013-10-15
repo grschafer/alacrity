@@ -26,7 +26,7 @@ def extract_positions(replay):
         for pl in replay.players:
             name = player_hero_map[pl.index]
             x,y = pl.hero.position if pl.hero else (0,0)
-            hp_pct = int(pl.hero.health / pl.hero.max_health * 100)
+            hp_pct = int(float(pl.hero.health) / pl.hero.max_health * 100)
             pos[name].append((int(x),int(y),hp_pct))
         pos['time'].append(replay.info.game_time)
 
