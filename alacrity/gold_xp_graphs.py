@@ -34,7 +34,7 @@ def extract_graphs(replay):
             gold = player.earned_gold
             gold_dict[name].append(gold)
 
-    return {'xp_graph':dict(xp_dict)}, {'gold_graph':dict(gold_dict)}
+    return {'xp_graph':dict(xp_dict), 'gold_graph':dict(gold_dict)}
 
 def main():
     dem_file = sys.argv[1] # pass replay as cmd-line argument!
