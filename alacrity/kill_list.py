@@ -16,17 +16,17 @@ from collections import defaultdict
 class Meepo(Hero):
     pass
 
-def get_heroes_in_1200(replay, target):
-    """Returns list of heroes within 1200 range of target and on opposite team"""
+def get_heroes_in_radius(replay, target, radius):
+    """Returns list of heroes within 1200 radius of target and on opposite team"""
     heroes = [p for p in replay.players if p.team in TEAMS.values() and p.team != target.team]
-    def within_1200(a,b):
-        return ((a.position[0] - b.position[0])**2 + (a.position[1] - b.position[1])**2) <= 1200 * 1200
+    def within_radius(a,b, radius):
+        return ((a.position[0] - b.position[0])**2 + (a.position[1] - b.position[1])**2) <= radius ** 2
     # meepo is torture
     if target.hero.name == 'Meepo':
         meepos = Meepo.get_all(replay)
-        heroes = [p for p in heroes if any([within_1200(p.hero, m) for m in meepos])]
+        heroes = [p for p in heroes if any([within_radius(p.hero, m, radius) for m in meepos])]
     else:
-        heroes = [p for p in heroes if within_1200(p.hero, target.hero)]
+        heroes = [p for p in heroes if within_radius(p.hero, target.hero, radius)]
     return heroes
 
 class Streak(list):
@@ -61,7 +61,7 @@ _XP_AREA = {0: lambda level: _XP_AREA[1](level),
 # WHAT ABOUT BH TRACK KILLS?
 def gold_xp_from_kill(replay, victim, firstblood=False, deny=False):
     """Total gold and xp given away from killing the victim"""
-    near_heroes = get_heroes_in_1200(replay, victim)
+    near_heroes = get_heroes_in_radius(replay, victim, 1300)
     num_heroes = len(near_heroes)
     #gold = STREAK_GOLD[victim.streak] + 200 + victim.hero.level * 9 + 200 if firstblood else 0
     xp = XP_AREA(num_heroes, victim.hero.level) if not deny else 0
