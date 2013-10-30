@@ -48,8 +48,9 @@ def main():
             print '  match id {}'.format(match_id)
 
             if args.f or db.find_one({'match_id': match_id}) is None:
-                match = get_match_details(match_id)
-                #print '  match details: {} vs {}, radiant_win: {}'.format(match.get('radiant_name', ''), match.get('dire_name', ''), match['radiant_win'])
+                match = db.find_one({'match_id': match_id}) or {}
+                match.update(get_match_details(match_id))
+                print '  match details: {} vs {}, radiant_win: {}'.format(match.get('radiant_name', ''), match.get('dire_name', ''), match['radiant_win'])
                 #match = {'match_id': match_id}
 
                 extract_funcs = [
@@ -68,6 +69,7 @@ def main():
                     try:
                         collected.append(extract(replay))
                     except Exception as e:
+                        print '\a'
                         print 'extraction failed for {}'.format(extract)
                         traceback.print_exc()
                         pdb.set_trace()
