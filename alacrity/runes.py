@@ -6,7 +6,7 @@ import sys
 from api import get_match_details
 from db import db
 from inspect_props import dict_to_csv
-from utils import HeroNameDict, unitIdx
+from utils import HeroNameDict, unitIdx, baseent_coords
 
 
 import traceback
@@ -14,14 +14,14 @@ from collections import defaultdict
 # look in user_messages for chat_event type=22 (pickup/use bottled) and type=23 (bottle)
 # look for Rune entity
 
-RUNES = {0: 'doubledamage', 1: 'haste', 2: 'illusion', 3: 'invisibility', 4: 'regeneration' }
+RUNES = {0: 'doubledamage', 1: 'haste', 2: 'illusion', 3: 'invis', 4: 'regen' }
 
 @register_entity("DT_DOTA_Item_Rune")
 class Rune(DotaEntity):
     pass
 
 def extract_runes(replay):
-    runes = {}
+    runes = set()
     rune_actions = []
     TEAMS = {2: 'radiant', 3: 'dire'}
 
@@ -33,8 +33,9 @@ def extract_runes(replay):
         runes_spawned = Rune.get_all(replay)
         for r in runes_spawned:
             if r.ehandle not in runes:
-                runes[r.ehandle] = 1
-                rune_actions.append({'time':replay.info.game_time, 'event':'rune_spawn', 'rune_type':RUNES[r.properties[('DT_DOTA_Item_Rune', 'm_iRuneType')]]})
+                runes.add(r.ehandle)
+                pos = baseent_coords(r)
+                rune_actions.append({'time':replay.info.game_time, 'event':'rune_spawn', 'x':pos[0], 'y':pos[1], 'rune_type':RUNES[r.properties[('DT_DOTA_Item_Rune', 'm_iRuneType')]]})
 
         msgs = replay.user_messages
         pickups = [x[1] for x in msgs if x[0] == 66 and x[1].type == 22]

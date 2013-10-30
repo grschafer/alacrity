@@ -1,3 +1,28 @@
+MAX_COORD_INTEGER = 16384
+def basenpc_coords(ent):
+    """basenpc_coords returns the game coordinates of the given tarrasque BaseNPC-derived entity"""
+    cellwidth = 1 << ent.properties[(u'DT_BaseEntity', u'm_cellbits')]
+
+    x = ((ent.properties[(u'DT_DOTA_BaseNPC', u'm_cellX')] * cellwidth) - MAX_COORD_INTEGER)\
+        + ent.properties[(u'DT_DOTA_BaseNPC', u'm_vecOrigin')][0]
+
+    y = ((ent.properties[(u'DT_DOTA_BaseNPC', u'm_cellY')] * cellwidth) - MAX_COORD_INTEGER)\
+        + ent.properties[(u'DT_DOTA_BaseNPC', u'm_vecOrigin')][1]
+
+    return (x, y)
+
+def baseent_coords(ent):
+    """baseent_coords returns the game coordinates of the given tarrasque BaseEntity-derived entity (e.g. runes_"""
+    cellwidth = 1 << ent.properties[(u'DT_BaseEntity', u'm_cellbits')]
+
+    x = ((ent.properties[(u'DT_BaseEntity', u'm_cellX')] * cellwidth) - MAX_COORD_INTEGER)\
+        + ent.properties[(u'DT_BaseEntity', u'm_vecOrigin')][0]
+
+    y = ((ent.properties[(u'DT_BaseEntity', u'm_cellY')] * cellwidth) - MAX_COORD_INTEGER)\
+        + ent.properties[(u'DT_BaseEntity', u'm_vecOrigin')][1]
+
+    return (x, y)
+
 def unitIdx(ent):
     return ent.properties[(u'DT_DOTA_BaseNPC', u'm_iUnitNameIndex')]
 
