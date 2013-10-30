@@ -21,7 +21,7 @@ def get_gpm_xpm(player, replay):
         return 0,0
     gst = replay.info.game_start_time + 1
     game_started = replay.info.game_time > gst
-    gpm = int(60 * player.earned_gold / (replay.info.game_time - gst) if game_started else 0),
+    gpm = int(60 * player.earned_gold / (replay.info.game_time - gst) if game_started else 0)
     xpm = int(60 * player.hero.xp / (replay.info.game_time - gst) if game_started else 0)
     return gpm,xpm
 

@@ -1,5 +1,7 @@
 git submodule init
+
 git submodule update
+
 install tarrasque and skadi to virtualenv
 
 run\_all will run the scripts specified inside it on all the .dem files in the directory/tree passed on command line
