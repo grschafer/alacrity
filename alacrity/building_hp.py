@@ -13,30 +13,24 @@ import pdb
 
 # structure:
 # { building_hp:
-#   { towers:
-#     { dota_good_towertop1:
-#       { 90: 334.89,
-#         80: 360.34,
-#         ...
-#       }, ...
-#       OR
-#       [{hp: 90, time: 334.89},
-#        {hp: 80, time: 360.34},
-#        ...
-#       ]
-#     },
-#     rax:
-#     { ...
-#     },
-#     ancients: ...
-#   }
+#  { dota_good_towertop1:
+#    { 90: 334.89,
+#      80: 360.34,
+#      ...
+#    }, ...
+#    OR
+#    [{hp: 90, time: 334.89},
+#     {hp: 80, time: 360.34},
+#     ...
+#    ]
+#  },
 # }
 # access by: building_hp[building_type][building_name][threshold value] = time threshold crossed
 # access by: building_hp[building_type][building_name] = {hp: threshold, time: crossed}
 
 def hp_pct(e):
     try:
-        return 100.0 * e.health / e.max_health
+        return int(100.0 * e.health / e.max_health)
     except KeyError: # the entity is gone (died)
         return 0
 
@@ -86,7 +80,7 @@ def extract_hp(replay):
     #   this makes it so the javascript doesn't need to know the threshold values,
     #   it can just iterate and check for the most recent time
     for name, threshtimes in building_hp.iteritems():
-        building_hp[name] = sorted([{'hp': k, 'time': v} for k,v in threshtimes.iteritems()], key=lambda x: x['time'])
+        building_hp[name] = sorted([{'hp': k, 'time': v} for k,v in threshtimes.iteritems()], key=lambda x: x['hp'], reverse=True)
 
     return {'building_hp': building_hp}
 
