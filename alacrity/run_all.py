@@ -54,7 +54,7 @@ def main():
                 #match = {'match_id': match_id}
 
                 extract_funcs = [
-                        #extract_wards,
+                        extract_wards,
                         extract_buybacks,
                         #extract_escapes,
                         extract_graphs,

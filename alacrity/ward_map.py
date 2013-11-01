@@ -6,6 +6,9 @@ import sys
 from api import get_match_details
 from db import db
 
+import pdb
+import traceback
+
 @register_entity("DT_DOTA_NPC_Observer_Ward")
 class Ward(BaseNPC):
     pass
@@ -15,22 +18,53 @@ class Ward(BaseNPC):
     #        wards[self.ehandle] = (self.position, self.team, self.tick)
     #        print '{}: {} {} {}'.format(self.ehandle, self.position, self.team, self.tick)
 
+# this sentry DT-type was introduced in 6.79
+@register_entity("DT_DOTA_NPC_Observer_Ward_TrueSight")
+class Sentry(BaseNPC):
+    pass
+
+ward_nameidx = 207
+sentry_nameidx = 208 # only way to differentiate wards pre-6.79
 def extract_wards(replay):
     """
-    Returns [{x:1234, y:-1234, team:radiant|dire, tick:2468}, ...]
+    Returns [{x:1234, y:-1234, event:add|rm, team:radiant|dire, type:obs|sentry, time:468.12, id:123445}, ...]
     """
-    wards = {}
-    for tick in replay.iter_ticks(start="pregame", end="postgame", step=300):
-        wardlist = Ward.get_all(replay)
+    ward_events = []
+    cur_wards = set()
+    for tick in replay.iter_ticks(start="pregame", end="postgame", step=30):
+        wardlist = Ward.get_all(replay) + Sentry.get_all(replay)
         for w in wardlist:
-            if w.ehandle not in wards:
-                wards[w.ehandle] = {
-                        'x': w.position[0],
-                        'y': w.position[1],
-                        'team': w.team,
-                        'time': replay.info.game_time
-                    }
-    return {'wards':wards.values()}
+            if w.ehandle not in cur_wards:
+                ward_type = "obs"
+                if w.properties[('DT_DOTA_BaseNPC', 'm_iUnitNameIndex')] == sentry_nameidx:
+                    ward_type = "sentry"
+                cur_wards.add(w.ehandle)
+                ward_events.append({
+                    'x': w.position[0],
+                    'y': w.position[1],
+                    'id': w.ehandle,
+                    'team': w.team,
+                    'type': ward_type,
+                    'time': replay.info.game_time,
+                    'event': 'add',
+                    })
+        to_remove = []
+        for ehandle in cur_wards:
+            try:
+                replay.world.find(ehandle)
+            except KeyError:
+                ward_events.append({
+                    'id': ehandle,
+                    'time': replay.info.game_time,
+                    'event': 'rm',
+                    })
+                to_remove.append(ehandle)
+
+        for ehandle in to_remove:
+            cur_wards.remove(ehandle)
+
+
+    return {'wards': ward_events}
 
 def main():
     dem_file = sys.argv[1] # pass replay as cmd-line argument!
@@ -39,6 +73,7 @@ def main():
     #match = get_match_details(match_id)
     match = db.find_one({'match_id': match_id}) or {}
     wards = extract_wards(replay)
+    print wards
     match.update(wards)
     result = db.update({'match_id': match_id}, match, upsert=True)
 
