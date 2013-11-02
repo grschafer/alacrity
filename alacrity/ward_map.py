@@ -25,12 +25,18 @@ class Sentry(BaseNPC):
 
 ward_nameidx = 207
 sentry_nameidx = 208 # only way to differentiate wards pre-6.79
+gst = None # game_start_time
 def extract_wards(replay):
     """
     Returns [{x:1234, y:-1234, event:add|rm, team:radiant|dire, type:obs|sentry, time:468.12, id:123445}, ...]
     """
     ward_events = []
     cur_wards = set()
+
+    replay.go_to_tick("game")
+    global gst
+    gst = replay.info.game_start_time
+
     for tick in replay.iter_ticks(start="pregame", end="postgame", step=30):
         wardlist = Ward.get_all(replay) + Sentry.get_all(replay)
         for w in wardlist:
@@ -45,7 +51,7 @@ def extract_wards(replay):
                     'id': w.ehandle,
                     'team': w.team,
                     'type': ward_type,
-                    'time': replay.info.game_time,
+                    'time': replay.info.game_time - gst,
                     'event': 'add',
                     })
         to_remove = []
@@ -55,7 +61,7 @@ def extract_wards(replay):
             except KeyError:
                 ward_events.append({
                     'id': ehandle,
-                    'time': replay.info.game_time,
+                    'time': replay.info.game_time - gst,
                     'event': 'rm',
                     })
                 to_remove.append(ehandle)

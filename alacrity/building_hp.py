@@ -34,6 +34,7 @@ def hp_pct(e):
     except KeyError: # the entity is gone (died)
         return 0
 
+gst = None
 def extract_hp(replay):
     building_hp = {b.properties[(u'DT_BaseEntity', u'm_iName')]:{}
                     for b in
@@ -50,6 +51,10 @@ def extract_hp(replay):
 
     thresholds = range(90, -1, -10)
     cur_hp = None
+
+    replay.go_to_tick("game")
+    global gst
+    gst = replay.info.game_start_time
 
     for tick in replay.iter_ticks(start="pregame", end="postgame", step=150):
         if replay.info.pausing_team:
@@ -68,7 +73,7 @@ def extract_hp(replay):
                 # if it fell below threshold since last tick iteration, store the time
                 if cur_hp <= thresh < building_prevhp[name]:
                     print name, thresh
-                    building_hp[name][thresh] = replay.info.game_time
+                    building_hp[name][thresh] = (replay.info.game_time - gst)
             building_prevhp[name] = cur_hp
 
         for d in destroyed:

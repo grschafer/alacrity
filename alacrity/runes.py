@@ -20,12 +20,15 @@ RUNES = {0: 'doubledamage', 1: 'haste', 2: 'illusion', 3: 'invis', 4: 'regen' }
 class Rune(DotaEntity):
     pass
 
+gst = None # game_start_time
 def extract_runes(replay):
     runes = set()
     rune_actions = []
     TEAMS = {2: 'radiant', 3: 'dire'}
 
     replay.go_to_tick('postgame')
+    global gst
+    gst = replay.info.game_start_time
     player_hero_map = {p.index:HeroNameDict[unitIdx(p.hero)]['name'] for p in replay.players}
 
     for tick in replay.iter_ticks(start="pregame", end="postgame", step=30):
@@ -35,15 +38,15 @@ def extract_runes(replay):
             if r.ehandle not in runes:
                 runes.add(r.ehandle)
                 pos = baseent_coords(r)
-                rune_actions.append({'time':replay.info.game_time, 'event':'rune_spawn', 'x':pos[0], 'y':pos[1], 'rune_type':RUNES[r.properties[('DT_DOTA_Item_Rune', 'm_iRuneType')]]})
+                rune_actions.append({'time':replay.info.game_time - gst, 'event':'rune_spawn', 'x':pos[0], 'y':pos[1], 'rune_type':RUNES[r.properties[('DT_DOTA_Item_Rune', 'm_iRuneType')]]})
 
         msgs = replay.user_messages
         pickups = [x[1] for x in msgs if x[0] == 66 and x[1].type == 22]
         bottles = [x[1] for x in msgs if x[0] == 66 and x[1].type == 23]
         for msg in pickups:
-            rune_actions.append({'time':replay.info.game_time, 'event':'rune_pickup', 'rune_type': RUNES[msg.value], 'hero':player_hero_map[msg.playerid_1]})
+            rune_actions.append({'time':replay.info.game_time - gst, 'event':'rune_pickup', 'rune_type': RUNES[msg.value], 'hero':player_hero_map[msg.playerid_1]})
         for msg in bottles:
-            rune_actions.append({'time':replay.info.game_time, 'event':'rune_bottle', 'rune_type': RUNES[msg.value], 'hero':player_hero_map[msg.playerid_1]})
+            rune_actions.append({'time':replay.info.game_time - gst, 'event':'rune_bottle', 'rune_type': RUNES[msg.value], 'hero':player_hero_map[msg.playerid_1]})
     return {'runes':rune_actions}
 
 

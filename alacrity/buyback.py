@@ -12,31 +12,36 @@ from utils import HeroNameDict, unitIdx
 import traceback
 from collections import defaultdict
 
-def buyback_cost(player, game_info):
+def buyback_cost(player, replay):
     level = player.hero.level
     # convert time from seconds to minutes
-    # NOT CONFIDENT ABOUT SUBTRACTING 90
-    game_time = (game_info.game_time - 90) / 60.
+    game_time = (replay.info.game_time - gst) / 60.
     raw = 100 + (level*level*1.5) + (game_time * 15)
-    return int(raw / 50) * 50
+    return int(raw)
 
 # look in user_messages for chat_event type=7, buyback by player
+gst = None # game_start_time
 def extract_buybacks(replay):
     bbs = []
     bb_cost = None
     name = None
 
     replay.go_to_tick('postgame')
+    global gst
+    gst = replay.info.game_start_time
     player_hero_map = {p.index:HeroNameDict[unitIdx(p.hero)]['name'] for p in replay.players}
 
     for tick in replay.iter_ticks(start="pregame", end="postgame", step=30):
         #print 'tick: {}'.format(tick)
+        if replay.info.pausing_team:
+            continue
         msgs = replay.user_messages
         buybacks = [x[1] for x in msgs if x[0] == 66 and x[1].type == 7]
         for msg in buybacks:
-            bb_cost = buyback_cost([p for p in replay.players if p.index == msg.playerid_1][0], replay.info)
+            pl = [p for p in replay.players if p.index == msg.playerid_1][0]
+            bb_cost = buyback_cost(pl, replay)
             name = player_hero_map[msg.playerid_1]
-            bbs.append({'time':replay.info.game_time, 'event':'buyback', 'cost':bb_cost, 'hero':name})
+            bbs.append({'time':(replay.info.game_time - gst), 'event':'buyback', 'cost':bb_cost, 'hero':name})
     return {'buybacks':bbs}
 
 

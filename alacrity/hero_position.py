@@ -11,6 +11,7 @@ from utils import HeroNameDict, unitIdx
 import traceback
 import pdb
 
+gst = None # game_start_time
 def extract_positions(replay):
     pos = defaultdict(list)
     x = y = None
@@ -18,6 +19,8 @@ def extract_positions(replay):
     #pdb.set_trace()
 
     replay.go_to_tick('postgame')
+    global gst
+    gst = replay.info.game_start_time
     player_hero_map = {p.index:HeroNameDict[unitIdx(p.hero)]['name'] for p in replay.players}
 
     for tick in replay.iter_ticks(start="pregame", end="postgame", step=30):
@@ -28,7 +31,7 @@ def extract_positions(replay):
             x,y = pl.hero.position if pl.hero else (0,0)
             hp_pct = int(float(pl.hero.health) / pl.hero.max_health * 100)
             pos[name].append((int(x),int(y),hp_pct))
-        pos['time'].append(replay.info.game_time)
+        pos['time'].append(replay.info.game_time - gst)
 
     return {'positions':dict(pos)}
 

@@ -15,21 +15,23 @@ from collections import defaultdict
 
 import pdb
 
+gst = None # game_start_time
 def get_gpm_xpm(player, replay):
-    if replay.info.game_start_time is None:
+    game_started = replay.info.game_time > gst
+    if not game_started:
         # then the game hasn't started yet
         return 0,0
-    gst = replay.info.game_start_time + 1
-    game_started = replay.info.game_time > gst
-    gpm = int(60 * player.earned_gold / (replay.info.game_time - gst) if game_started else 0)
-    xpm = int(60 * player.hero.xp / (replay.info.game_time - gst) if game_started else 0)
+    # add +1 to avoid div by zero if we land on the game_start_time tick
+    gpm = int(60 * player.earned_gold / (replay.info.game_time - gst + 1))
+    xpm = int(60 * player.hero.xp / (replay.info.game_time - gst + 1))
     return gpm,xpm
 
 def extract_scoreboards(replay):
     scoreboards = []
     replay.go_to_tick('postgame')
+    global gst
+    gst = replay.info.game_start_time
     player_hero_map = {p.index:HeroNameDict[unitIdx(p.hero)]['name'] for p in replay.players}
-    # add +1 to avoid div by zero if we land on the game_start_time tick
     # TODO: reverse key,value?
     TEAMS = {2: 'radiant', 3:'dire'}
     player_names = {player_hero_map[p.index]:p.name.decode('utf-8').replace('.',u'\uff0E') for p in replay.players}
@@ -42,7 +44,7 @@ def extract_scoreboards(replay):
         if replay.info.pausing_team:
             continue
         try:
-            scoreboard = {'time':replay.info.game_time}
+            scoreboard = {'time':replay.info.game_time - gst}
             for pl in replay.players:
                 if not pl.hero:
                     continue

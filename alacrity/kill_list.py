@@ -111,16 +111,19 @@ def get_killers(replay, victim):
 import pdb;
 
 TEAMS = {2: 'radiant', 3: 'dire'}
+gst = None # game_start_time
 def extract_kill_list(replay):
     deaths = []
     # ALSO NEED DICTS OF RAW NAMES (npc_dota_hero_nevermore) AND ENT_INDEX (2)?
     # raw names needs to include towers, creeps (lane/neutral), and fountain
     replay.go_to_tick('postgame')
+    global gst
+    gst = replay.info.game_start_time
     player_hero_map = {p.index:HeroNameDict[unitIdx(p.hero)]['name'] for p in replay.players}
 
     for tick in replay.iter_ticks(start="pregame", end="postgame", step=30):
         try:
-            #print 'tick: {}, gametime: {}'.format(tick, replay.info.game_time - 90)
+            #print 'tick: {}, gametime: {}'.format(tick, replay.info.game_time - gst)
             evts = replay.game_events
             cur_deaths = [x for x in evts if isinstance(x, CombatLogMessage) and x.type == 'death' and x.target_name.startswith('npc_dota_hero')]
 
@@ -140,7 +143,7 @@ def extract_kill_list(replay):
                 firstblood = True if len(deaths) == 0 else False
                 deny = True if killers[0].team == victim.team else False
                 gold, xp = gold_xp_from_kill(replay, victim, firstblood=firstblood, deny=deny)
-                d = {'time': replay.info.game_time, 'hero':HeroNameDict[death.target_name]['name'], 'bounty_gold': gold, 'bounty_xp': xp, 'event': 'deny' if deny else 'kill'}
+                d = {'time': replay.info.game_time - gst, 'hero':HeroNameDict[death.target_name]['name'], 'bounty_gold': gold, 'bounty_xp': xp, 'event': 'deny' if deny else 'kill'}
                 deaths.append(d)
                 print 'tick {}: {}'.format(tick, d)
         except Exception as e:
@@ -170,7 +173,7 @@ def extract_kill_list(replay):
                     except KeyError:
                         name = c.attacker_name
                     killers[name][c.inflictorname] += c.value
-                if replay.info.game_time > death['time']:
+                if replay.info.game_time - gst > death['time']:
                     print killers
                     death['killers'] = killers
                     break

@@ -20,11 +20,14 @@ from collections import defaultdict
 # snatched_aegis is chat_event type=53
 #
 # OrderedDict([(u'type', 4), (u'sourcename', 11), (u'targetname', 115), (u'attackername', 11), (u'inflictorname', 0), (u'attackerillusion', False), (u'targetillusion', False), (u'value', 0), (u'health', 0), (u'timestamp', 2798.343994140625), (u'targetsourcename', 115)])
+gst = None # game_start_time
 def extract_roshans(replay):
     roshs = []
     TEAMS = {2: 'radiant', 3: 'dire'}
 
     replay.go_to_tick('postgame')
+    global gst
+    gst = replay.info.game_start_time
     player_hero_map = {p.index:HeroNameDict[unitIdx(p.hero)]['name'] for p in replay.players}
     player_team_map = {p.index: p.hero.team for p in replay.players}
 
@@ -36,13 +39,13 @@ def extract_roshans(replay):
         aegis_snatch = [x[1] for x in msgs if x[0] == 66 and x[1].type == 53]
         aegis_deny = [x[1] for x in msgs if x[0] == 66 and x[1].type == 51]
         for msg in rosh_deaths:
-            roshs.append({'time':replay.info.game_time, 'event':'roshan_kill', 'team':player_team_map[msg.playerid_1]})
+            roshs.append({'time':replay.info.game_time - gst, 'event':'roshan_kill', 'team':player_team_map[msg.playerid_1]})
         for msg in aegis_take:
-            roshs.append({'time':replay.info.game_time, 'event':'aegis_pickup', 'hero':player_hero_map[msg.playerid_1]})
+            roshs.append({'time':replay.info.game_time - gst, 'event':'aegis_pickup', 'hero':player_hero_map[msg.playerid_1]})
         for msg in aegis_snatch:
-            roshs.append({'time':replay.info.game_time, 'event':'aegis_stolen', 'hero':player_hero_map[msg.playerid_1]})
+            roshs.append({'time':replay.info.game_time - gst, 'event':'aegis_stolen', 'hero':player_hero_map[msg.playerid_1]})
         for msg in aegis_deny:
-            roshs.append({'time':replay.info.game_time, 'event':'aegis_denied', 'hero':player_hero_map[msg.playerid_1]})
+            roshs.append({'time':replay.info.game_time - gst, 'event':'aegis_denied', 'hero':player_hero_map[msg.playerid_1]})
     return {'roshans':roshs}
 
 

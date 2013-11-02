@@ -12,6 +12,8 @@ from utils import HeroNameDict, unitIdx
 import pdb
 import traceback
 from collections import defaultdict
+
+gst = None # game_start_time
 def extract_graphs(replay):
     xp_dict = defaultdict(list)
     gold_dict = defaultdict(list)
@@ -20,13 +22,15 @@ def extract_graphs(replay):
     name = None
 
     replay.go_to_tick('postgame')
+    global gst
+    gst = replay.info.game_start_time
     player_hero_map = {p.index:HeroNameDict[unitIdx(p.hero)]['name'] for p in replay.players}
 
     for tick in replay.iter_ticks(start="pregame", end="postgame", step=300):
         if replay.info.pausing_team:
             continue
-        xp_dict['time'].append(replay.info.game_time)
-        gold_dict['time'].append(replay.info.game_time)
+        xp_dict['time'].append(replay.info.game_time - gst)
+        gold_dict['time'].append(replay.info.game_time - gst)
         for player in replay.players:
             name = player_hero_map[player.index]
             xp = player.hero.xp if player.hero else 0
