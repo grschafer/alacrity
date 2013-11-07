@@ -52,9 +52,10 @@ def extract_hp(replay):
     thresholds = range(90, -1, -10)
     cur_hp = None
 
-    replay.go_to_tick("game")
+    replay.go_to_tick("postgame")
     global gst
     gst = replay.info.game_start_time
+    print 'gst', gst
 
     for tick in replay.iter_ticks(start="pregame", end="postgame", step=150):
         if replay.info.pausing_team:
@@ -72,7 +73,7 @@ def extract_hp(replay):
             for thresh in thresholds:
                 # if it fell below threshold since last tick iteration, store the time
                 if cur_hp <= thresh < building_prevhp[name]:
-                    print name, thresh
+                    print name, thresh, replay.info.game_time - gst
                     building_hp[name][thresh] = (replay.info.game_time - gst)
             building_prevhp[name] = cur_hp
 
