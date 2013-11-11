@@ -1,10 +1,22 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+# boilerplate to allow running as script directly
+# http://stackoverflow.com/a/6655098/751774
+if __name__ == "__main__" and __package__ is None:
+    import sys, os
+    parent_dir = os.path.dirname(os.path.abspath(__file__))
+    while os.path.exists(os.path.join(parent_dir, '__init__.py')):
+        parent_dir = os.path.dirname(parent_dir)
+        sys.path.insert(1, parent_dir)
+    import alacrity.parsers
+    __package__ = "alacrity.parsers"
+    del sys, os
+
 from tarrasque import *
 import sys
-from api import get_match_details
-from db import db
+from ..config.api import get_match_details
+from ..config.db import db
 from collections import defaultdict
 from utils import HeroNameDict, unitIdx
 

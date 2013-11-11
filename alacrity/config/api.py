@@ -5,7 +5,7 @@ try: import simplejson as json
 except ImportError: import json
 
 _config = ConfigParser()
-_config_path = os.path.join('config.cfg')
+_config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'config.cfg')
 _config.read(_config_path)
 
 def _get_api_key():
