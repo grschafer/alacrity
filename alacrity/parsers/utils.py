@@ -49,7 +49,7 @@ class HeroNameDict(dict):
     # source: http://code.activestate.com/recipes/578231-probably-the-fastest-memoization-decorator-in-the-/
     def __missing__(self, key):
         ret = None
-        if isinstance(key, str):
+        if isinstance(key, basestring):
             if key.startswith('DT_'):
                 ret = self.__iter_til_find__('dt_name', key)
             elif key.startswith('npc_'):

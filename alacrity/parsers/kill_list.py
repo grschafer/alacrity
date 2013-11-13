@@ -136,28 +136,33 @@ def extract_kill_list(replay):
     for tick in replay.iter_ticks(start="pregame", end="postgame", step=30):
         try:
             #print 'tick: {}, gametime: {}'.format(tick, replay.info.game_time - gst)
-            evts = replay.game_events
-            cur_deaths = [x for x in evts if isinstance(x, CombatLogMessage) and x.type == 'death' and x.target_name.startswith('npc_dota_hero')]
-
-            # remove duplicate deaths (meepo)
-            cur_deaths = reduce(lambda x,y: x if y.target_name in [n.target_name for n in x] else x + [y], cur_deaths, [])
-
-            # remove people who just died with aegis
-            reincarnating = [p for p in replay.players if p.hero and p.hero.properties[(u'DT_DOTA_BaseNPC_Hero', u'm_bReincarnating')] == 1]
-            if len(reincarnating) > 0:
-                print '!!reincarnating:{} {}'.format(reincarnating[0].hero.name, reincarnating[0].index)
-            reincarnating = [player_hero_map[p.index] for p in reincarnating]
-            cur_deaths = [x for x in cur_deaths if x.target_name not in reincarnating]
-
-            for death in cur_deaths:
-                victim = [x for x in replay.players if HeroNameDict[unitIdx(x.hero)]['name'] == death.target_name][0]
-                killers = get_killers(replay, victim)
-                firstblood = True if len(deaths) == 0 else False
-                deny = True if killers[0].team == victim.team else False
-                gold, xp = gold_xp_from_kill(replay, victim, firstblood=firstblood, deny=deny)
-                d = {'time': replay.info.game_time - gst, 'hero':HeroNameDict[death.target_name]['name'], 'bounty_gold': gold, 'bounty_xp': xp, 'event': 'deny' if deny else 'kill'}
+            msgs = replay.user_messages
+            kills = [msg[1] for msg in msgs if msg[0] == 66 and msg[1].type == 0]
+            streak_kills = [msg[1] for msg in msgs if msg[0] == 66 and msg[1].type == 6]
+            for death in kills:
+                victim = [x for x in replay.players if x.index == death.playerid_1][0]
+                killer = [x for x in replay.players if x.index == death.playerid_2][0]
+                deny = True if killer.team == victim.team else False
+                d = {'time': replay.info.game_time - gst,
+                     'hero':HeroNameDict[victim.hero.dt_key]['name'],
+                     'killer':HeroNameDict[killer.hero.dt_key]['name'],
+                     'bounty_gold': death.value,
+                     'event': 'deny' if deny else 'kill'}
                 deaths.append(d)
-                print 'tick {}: {}'.format(tick, d)
+                print d
+            for death in streak_kills:
+                victim = [x for x in replay.players if x.index == death.playerid_4][0]
+                killer = [x for x in replay.players if x.index == death.playerid_1][0]
+                deny = True if killer.team == victim.team else False
+                d = {'time': replay.info.game_time - gst,
+                     'hero':HeroNameDict[victim.hero.dt_key]['name'],
+                     'killer':HeroNameDict[killer.hero.dt_key]['name'],
+                     'killer_streak': death.playerid_2,
+                     'victim_streak': death.playerid_5,
+                     'bounty_gold': death.value,
+                     'event': 'deny' if deny else 'kill'}
+                deaths.append(d)
+                print d
         except Exception as e:
             exc_type, exc_value, exc_traceback = sys.exc_info()
             print '*** print_tb'
@@ -169,31 +174,6 @@ def extract_kill_list(replay):
             pdb.set_trace()
             print 'done'
 
-    print 'starting replay over, found {} deaths'.format(len(deaths))
-    for death in deaths:
-        try:
-            killers = defaultdict(lambda: defaultdict(int))
-            print 'going to time {} for death {}'.format(death['time'] - 30, death)
-            tick = replay.go_to_time(death['time'] - 30)
-            for tick in replay.iter_ticks(start=tick, step=30):
-                evts = replay.game_events
-                #TODO: damage counts damage against all meepos (meepo has which_meepo property)
-                combats = [x for x in evts if isinstance(x, CombatLogMessage) and x.type == 'damage' and x.target_name == death['hero']]
-                for c in combats:
-                    try:
-                        name = HeroNameDict[c.attacker_name]['name']
-                    except KeyError:
-                        name = c.attacker_name
-                    killers[name][c.inflictorname] += c.value
-                if replay.info.game_time - gst > death['time']:
-                    print killers
-                    death['killers'] = killers
-                    break
-        except Exception as e:
-            print traceback.format_exc()
-            pdb.set_trace()
-
-    print deaths
     #pdb.set_trace()
     return {'kill_list':deaths}
 
