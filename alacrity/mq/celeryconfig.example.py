@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 BROKER_URL = CELERY_RESULT_BACKEND = \
         'transport://userid:password@hostname:port/virtual_host'
 
@@ -10,15 +12,21 @@ CELERY_RESULT_SERIALIZER = 'json' # default: 'pickle'
 CELERYD_PREFETCH_MULTIPLIER = 1 # default: 4
 
 #CELERY_TIMEZONE = 'US/Mountain' # requires pytz
-#CELERY_ENABLE_UTC = True
+CELERY_ENABLE_UTC = True
+
+#CELERY_DEFAULT_RATE_LIMIT = '1/m'
 
 from datetime import timedelta
+from celery.schedules import crontab
 CELERYBEAT_SCHEDULE = {
-    'add-every-30-seconds': {
-        'task': 'alacrity.mq.tasks.add',
-        'schedule': timedelta(seconds=30),
-        'args': (16, 16)
-    },
+        'find new matches': {
+            'task': 'alacrity.mq.tasks.workflow',
+            'schedule': crontab(minute=35, hour=23),
+        },
+        'update leagues': {
+            'task': 'alacrity.mq.tasks.update_leagues',
+            'schedule': crontab(minute=35, hour=23),
+        },
 }
 
 CELERY_SEND_TASK_ERROR_EMAILS = True
@@ -34,4 +42,4 @@ EMAIL_PORT = 25
 EMAIL_HOST_USER = "username"
 EMAIL_HOST_PASSWORD = "password"
 EMAIL_USE_SSL = True
-EMAIL_USE_TLS = True
+#EMAIL_USE_TLS = True

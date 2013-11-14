@@ -40,17 +40,8 @@ def endswith(array, ending):
         if x.endswith(ending):
             yield x
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('target_dir',
-                        help='directory to process .dem files from')
-    parser.add_argument('-f', action='store_true',
-                        help='force re-processing for matches already found in db')
-    parser.add_argument('-r', action='store_true',
-                        help='parse .dem files in sub-directories')
-    args = parser.parse_args()
-
-    for root, dirs, files in os.walk(args.target_dir):
+def process_replays(directory, recurse=False, force=False):
+    for root, dirs, files in os.walk(directory):
         for fname in endswith(files, '.dem'):
             path = os.path.join(root, fname)
             print 'processing match from {}'.format(path)
@@ -59,7 +50,7 @@ def main():
             match_id = replay.info.match_id
             print '  match id {}'.format(match_id)
 
-            if args.f or db.find_one({'match_id': match_id}) is None:
+            if force or db.find_one({'match_id': match_id}) is None:
                 match = db.find_one({'match_id': match_id}) or {}
                 match.update(get_match_details(match_id))
                 print '  match details: {} vs {}, radiant_win: {}'.format(match.get('radiant_name', ''), match.get('dire_name', ''), match['radiant_win'])
@@ -101,8 +92,22 @@ def main():
                 print '  match already exists in database, skipping...'
 
         # don't walk sub-directories unless -r flag supplied
-        if not args.r:
+        if not recurse:
             del dirs[:]
+
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('target_dir',
+                        help='directory to process .dem files from')
+    parser.add_argument('-f', action='store_true',
+                        help='force re-processing for matches already found in db')
+    parser.add_argument('-r', action='store_true',
+                        help='parse .dem files in sub-directories')
+    args = parser.parse_args()
+
+    process_replays(args.target_dir, args.r, args.f)
 
 if __name__ == '__main__':
     main()

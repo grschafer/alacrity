@@ -10,10 +10,14 @@ _config.read(_config_path)
 def _get_mongo_connection():
     db_server = (_config.get('db', 'host'), _config.getint('db', 'port'))
     db_name = _config.get('db', 'db_name')
-    collection_name = _config.get('db', 'collection_name')
+    match_collection = _config.get('db', 'match_collection')
+    league_collection = _config.get('db', 'league_collection')
     client = pymongo.mongo_client.MongoClient(*db_server)
-    db = client[db_name][collection_name]
-    db.ensure_index('match_id', pymongo.ASCENDING)
+    db = client[db_name]
+    db[match_collection].ensure_index('match_id', pymongo.ASCENDING)
+    db[league_collection].ensure_index('leagueid', pymongo.ASCENDING)
     return db
 
-db = _get_mongo_connection()
+_db = _get_mongo_connection()
+db = _db[_config.get('db', 'match_collection')]
+league_db = _db[_config.get('db', 'league_collection')]
