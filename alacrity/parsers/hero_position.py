@@ -1,52 +1,51 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# boilerplate to allow running as script directly
-# http://stackoverflow.com/a/6655098/751774
-if __name__ == "__main__" and __package__ is None:
-    import sys, os
-    parent_dir = os.path.dirname(os.path.abspath(__file__))
-    while os.path.exists(os.path.join(parent_dir, '__init__.py')):
-        parent_dir = os.path.dirname(parent_dir)
-        sys.path.insert(1, parent_dir)
-    import alacrity.parsers
-    __package__ = "alacrity.parsers"
-    del sys, os
-
 from tarrasque import *
 import sys
 from ..config.api import get_match_details
 from ..config.db import db
 from collections import defaultdict
 from utils import HeroNameDict, unitIdx
+from parser import Parser
 
 import traceback
 import pdb
 
-gst = None # game_start_time
-def extract_positions(replay):
-    pos = defaultdict(list)
-    x = y = None
-    name = None
-    #pdb.set_trace()
+class PositionParser(Parser):
+    def __init__(self, replay):
+        assert replay.info.game_state == "postgame"
+        self.gst = replay.info.game_start_time
+        self.player_hero_map = {p.index:HeroNameDict[unitIdx(p.hero)]['name'] for p in replay.players}
+        self.pos = defaultdict(list)
 
-    replay.go_to_tick('postgame')
-    global gst
-    gst = replay.info.game_start_time
-    player_hero_map = {p.index:HeroNameDict[unitIdx(p.hero)]['name'] for p in replay.players}
+    @property
+    def tick_step(self):
+        return 30
 
-    for tick in replay.iter_ticks(start="pregame", end="postgame", step=30):
+    def parse(self, replay):
         if replay.info.pausing_team:
-            continue
+            return
         for pl in replay.players:
-            if pl:
-                name = player_hero_map[pl.index]
+            if pl and pl.hero:
+                name = self.player_hero_map[pl.index]
                 x,y = pl.hero.position if pl.hero else (0,0)
                 hp_pct = int(float(pl.hero.health) / pl.hero.max_health * 100)
-                pos[name].append((int(x),int(y),hp_pct))
-        pos['time'].append(replay.info.game_time - gst)
+                self.pos[name].append((int(x),int(y),hp_pct))
+        self.pos['time'].append(replay.info.game_time - self.gst)
 
-    return {'positions':dict(pos)}
+    @property
+    def results(self):
+        return {'positions':dict(self.pos)}
+
+
+def extract_positions(replay):
+    replay.go_to_tick('postgame')
+    parser = PositionParser(replay)
+    for tick in replay.iter_ticks(start="pregame", end="postgame", step=parser.tick_step):
+        parser.parse(replay)
+    return parser.results
+
 
 def main():
     dem_file = sys.argv[1] # pass replay as cmd-line argument!

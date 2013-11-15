@@ -1,25 +1,17 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# boilerplate to allow running as script directly
-# http://stackoverflow.com/a/6655098/751774
-if __name__ == "__main__" and __package__ is None:
-    import sys, os
-    parent_dir = os.path.dirname(os.path.abspath(__file__))
-    while os.path.exists(os.path.join(parent_dir, '__init__.py')):
-        parent_dir = os.path.dirname(parent_dir)
-        sys.path.insert(1, parent_dir)
-    import alacrity.parsers
-    __package__ = "alacrity.parsers"
-    del sys, os
-
 from tarrasque import *
 import sys
 from ..config.api import get_match_details
 from ..config.db import db
+from parser import Parser
 
 import pdb
 import traceback
+
+WARD_NAMEIDX = 207
+SENTRY_NAMEIDX = 208 # only way to differentiate wards pre-6.79
 
 @register_entity("DT_DOTA_NPC_Observer_Ward")
 class Ward(BaseNPC):
@@ -35,54 +27,64 @@ class Ward(BaseNPC):
 class Sentry(BaseNPC):
     pass
 
-ward_nameidx = 207
-sentry_nameidx = 208 # only way to differentiate wards pre-6.79
-gst = None # game_start_time
-def extract_wards(replay):
+class WardParser(Parser):
     """
     Returns [{x:1234, y:-1234, event:add|rm, team:radiant|dire, type:obs|sentry, time:468.12, id:123445}, ...]
     """
-    ward_events = []
-    cur_wards = set()
 
-    replay.go_to_tick("game")
-    global gst
-    gst = replay.info.game_start_time
+    def __init__(self, replay):
+        assert replay.info.game_state == "postgame"
+        self.gst = replay.info.game_start_time
+        self.ward_events = []
+        self.cur_wards = set()
 
-    for tick in replay.iter_ticks(start="pregame", end="postgame", step=30):
+    @property
+    def tick_step(self):
+        return 30
+
+    def parse(self, replay):
         wardlist = Ward.get_all(replay) + Sentry.get_all(replay)
         for w in wardlist:
-            if w.ehandle not in cur_wards:
+            if w.ehandle not in self.cur_wards:
                 ward_type = "obs"
-                if w.properties[('DT_DOTA_BaseNPC', 'm_iUnitNameIndex')] == sentry_nameidx:
+                if w.properties[('DT_DOTA_BaseNPC', 'm_iUnitNameIndex')] == SENTRY_NAMEIDX:
                     ward_type = "sentry"
-                cur_wards.add(w.ehandle)
-                ward_events.append({
+                self.cur_wards.add(w.ehandle)
+                self.ward_events.append({
                     'x': w.position[0],
                     'y': w.position[1],
                     'id': w.ehandle,
                     'team': w.team,
                     'type': ward_type,
-                    'time': replay.info.game_time - gst,
+                    'time': replay.info.game_time - self.gst,
                     'event': 'add',
                     })
         to_remove = []
-        for ehandle in cur_wards:
+        for ehandle in self.cur_wards:
             try:
                 replay.world.find(ehandle)
             except KeyError:
-                ward_events.append({
+                self.ward_events.append({
                     'id': ehandle,
-                    'time': replay.info.game_time - gst,
+                    'time': replay.info.game_time - self.gst,
                     'event': 'rm',
                     })
                 to_remove.append(ehandle)
 
         for ehandle in to_remove:
-            cur_wards.remove(ehandle)
+            self.cur_wards.remove(ehandle)
 
+    @property
+    def results(self):
+        return {'wards': self.ward_events}
 
-    return {'wards': ward_events}
+def extract_wards(replay):
+    replay.go_to_tick('postgame')
+    parser = WardParser(replay)
+    for tick in replay.iter_ticks(start="pregame", end="postgame", step=parser.tick_step):
+        parser.parse(replay)
+    return parser.results
+
 
 def main():
     dem_file = sys.argv[1] # pass replay as cmd-line argument!
