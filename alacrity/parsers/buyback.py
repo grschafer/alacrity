@@ -38,9 +38,9 @@ class BuybackParser(Parser):
         buybacks = [x[1] for x in msgs if x[0] == 66 and x[1].type == 7]
         for msg in buybacks:
             pl = [p for p in replay.players if p.index == msg.playerid_1][0]
-            self.bb_cost = buyback_cost(pl, replay, self.gst)
+            bb_cost = buyback_cost(pl, replay, self.gst)
             name = self.player_hero_map[msg.playerid_1]
-            self.bbs.append({'time':(replay.info.game_time - self.gst), 'event':'buyback', 'cost':self.bb_cost, 'hero':name})
+            self.bbs.append({'time':(replay.info.game_time - self.gst), 'event':'buyback', 'cost':bb_cost, 'hero':name})
 
     @property
     def results(self):

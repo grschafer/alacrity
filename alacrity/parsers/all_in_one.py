@@ -67,9 +67,9 @@ def process_replays(directory, recurse=False, force=False):
             print '  match id {}'.format(match_id)
 
             if force or db.find_one({'match_id': match_id}) is None:
-                match = db.find_one({'match_id': match_id}) or {}
-                #match.update(api.get_match_details(match_id))
-                #print '  match details: {} vs {}, radiant_win: {}'.format(match.get('radiant_name', ''), match.get('dire_name', ''), match['radiant_win'])
+                match = db.find_one({'match_id': match_id}) or {'match_id': match_id}
+                match.update(api.get_match_details(match_id))
+                print '  match details: {} vs {}, radiant_win: {}'.format(match.get('radiant_name', ''), match.get('dire_name', ''), match['radiant_win'])
                 parsed = parse_replay(replay)
                 match.update(parsed)
                 result = db.update({'match_id': match_id}, match, upsert=True)
