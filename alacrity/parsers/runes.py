@@ -9,6 +9,7 @@ from ..config.db import db
 from inspect_props import dict_to_csv
 from utils import HeroNameDict, unitIdx, baseent_coords
 from parser import Parser
+from preparsers import GameStartTime, PlayerHeroMap
 
 
 import traceback
@@ -24,9 +25,10 @@ class Rune(DotaEntity):
 
 class RuneParser(Parser):
     def __init__(self, replay):
-        assert replay.info.game_state == "postgame"
-        self.gst = replay.info.game_start_time
-        self.player_hero_map = {p.index:HeroNameDict[unitIdx(p.hero)]['name'] for p in replay.players}
+        self.gst = GameStartTime().results
+        self.player_hero_map = PlayerHeroMap().results
+        assert self.gst is not None
+        assert self.player_hero_map is not None and len(self.player_hero_map) > 0
         self.runes = set()
         self.rune_actions = []
 

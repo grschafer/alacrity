@@ -11,6 +11,7 @@ import traceback
 from alacrity.config.db import db
 import alacrity.config.api as api
 from parser import Parser
+import preparsers
 
 from ward_map import WardParser
 from buyback import BuybackParser
@@ -24,12 +25,20 @@ from scoreboard import ScoreboardParser
 # __subclasses__() will contain all the subclasses of the
 # base Parser class that are imported in this scope
 parser_classes = Parser.__subclasses__()
+preparser_classes = preparsers.Preparser.__subclasses__()
 
 def parse_replay(replay):
-    # load endgame so data like heroes, teams, game_start_time,
-    # are defined -- each parser will grab the info it needs
-    # when it is initialized
-    replay.go_to_tick("postgame")
+    # get general pre-parsing info (e.g. player-hero-team-name mappings)
+    # by iterating through replay's full-ticks first
+    # this info is available to parsers because preparsers are singletons
+    preparsers = []
+    for preparser in preparser_classes:
+        preparsers.append(preparser(replay))
+    for tick in replay.iter_full_ticks(start="pregame", end="postgame"):
+        print 'tick: {}'.format(tick)
+        for preparser in preparsers:
+            preparser.parse(replay)
+
     parsers = []
     for parser in parser_classes:
         parsers.append(parser(replay))
@@ -68,8 +77,8 @@ def process_replays(directory, recurse=False, force=False):
 
             if force or db.find_one({'match_id': match_id}) is None:
                 match = db.find_one({'match_id': match_id}) or {'match_id': match_id}
-                match.update(api.get_match_details(match_id))
-                print '  match details: {} vs {}, radiant_win: {}'.format(match.get('radiant_name', ''), match.get('dire_name', ''), match['radiant_win'])
+                #match.update(api.get_match_details(match_id))
+                #print '  match details: {} vs {}, radiant_win: {}'.format(match.get('radiant_name', ''), match.get('dire_name', ''), match['radiant_win'])
                 parsed = parse_replay(replay)
                 match.update(parsed)
                 result = db.update({'match_id': match_id}, match, upsert=True)

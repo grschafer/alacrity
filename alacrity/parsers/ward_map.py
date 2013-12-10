@@ -6,6 +6,7 @@ import sys
 from ..config.api import get_match_details
 from ..config.db import db
 from parser import Parser
+from preparsers import GameStartTime
 
 import pdb
 import traceback
@@ -33,8 +34,8 @@ class WardParser(Parser):
     """
 
     def __init__(self, replay):
-        assert replay.info.game_state == "postgame"
-        self.gst = replay.info.game_start_time
+        self.gst = GameStartTime().results
+        assert self.gst is not None
         self.ward_events = []
         self.cur_wards = set()
 

@@ -9,6 +9,7 @@ from ..config.db import db
 from inspect_props import dict_to_csv
 from utils import HeroNameDict, unitIdx
 from parser import Parser
+from preparsers import GameStartTime
 
 
 import traceback
@@ -18,8 +19,8 @@ import pdb;
 
 class KillParser(Parser):
     def __init__(self, replay):
-        assert replay.info.game_state == "postgame"
-        self.gst = replay.info.game_start_time
+        self.gst = GameStartTime().results
+        assert self.gst is not None
         self.deaths = []
 
     @property
