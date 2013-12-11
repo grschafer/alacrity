@@ -17,6 +17,7 @@ from ward_map import WardParser
 from buyback import BuybackParser
 from gold_xp_graphs import GraphParser
 from hero_position import PositionParser
+from building_hp import BuildingHpParser
 from kill_list import KillParser
 from roshan import RoshanParser
 from runes import RuneParser

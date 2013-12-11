@@ -19,6 +19,8 @@ from ..config.api import get_match_details
 from ..config.db import db
 from collections import defaultdict
 from utils import HeroNameDict, unitIdx
+from parser import Parser, run_single_parser
+from preparsers import GameStartTime
 
 import traceback
 import pdb
@@ -46,61 +48,65 @@ def hp_pct(e):
     except KeyError: # the entity is gone (died)
         return 0
 
-gst = None
-def extract_hp(replay):
-    building_hp = {b.properties[(u'DT_BaseEntity', u'm_iName')]:{}
-                    for b in
-                    replay.buildings.towers + replay.buildings.barracks + replay.buildings.ancients}
+class BuildingHpParser(Parser):
+    def __init__(self, replay):
+        self.gst = GameStartTime().results
+        assert self.gst is not None
+        self.building_hp = {b.properties[(u'DT_BaseEntity', u'm_iName')]:{}
+                        for b in
+                        replay.buildings.towers + replay.buildings.barracks + replay.buildings.ancients}
 
-    game_buildings = {b.properties[(u'DT_BaseEntity', u'm_iName')]:b
-                    for b in
-                    replay.buildings.towers + replay.buildings.barracks + replay.buildings.ancients}
+        self.game_buildings = {b.properties[(u'DT_BaseEntity', u'm_iName')]:b
+                        for b in
+                        replay.buildings.towers + replay.buildings.barracks + replay.buildings.ancients}
 
-    # stores health from prev iteration (to test for falling below a threshold)
-    building_prevhp = {b.properties[(u'DT_BaseEntity', u'm_iName')]:hp_pct(b)
-                    for b in
-                    replay.buildings.towers + replay.buildings.barracks + replay.buildings.ancients}
+        # stores health from prev iteration (to test for falling below a threshold)
+        self.building_prevhp = {b.properties[(u'DT_BaseEntity', u'm_iName')]:hp_pct(b)
+                        for b in
+                        replay.buildings.towers + replay.buildings.barracks + replay.buildings.ancients}
 
-    thresholds = range(90, -1, -10)
-    cur_hp = None
+        self.thresholds = range(90, -1, -10)
+        self.cur_hp = None
 
-    replay.go_to_tick("postgame")
-    global gst
-    gst = replay.info.game_start_time
-    print 'gst', gst
+    @property
+    def tick_step(self):
+        return 150
 
-    for tick in replay.iter_ticks(start="pregame", end="postgame", step=150):
+    def parse(self, replay):
         if replay.info.pausing_team:
             continue
 
         destroyed = []
-        for name,b in game_buildings.iteritems():
-            cur_hp = hp_pct(b)
+        for name,b in self.game_buildings.iteritems():
+            self.cur_hp = hp_pct(b)
 
             # mark building for removal from iteration list
-            if cur_hp == 0:
+            if self.cur_hp == 0:
                 destroyed.append(name)
 
             # iterate all thresholds to account for building healing
-            for thresh in thresholds:
+            for thresh in self.thresholds:
                 # if it fell below threshold since last tick iteration, store the time
-                if cur_hp <= thresh < building_prevhp[name]:
-                    print name, thresh, replay.info.game_time - gst
-                    building_hp[name][thresh] = (replay.info.game_time - gst)
-            building_prevhp[name] = cur_hp
+                if self.cur_hp <= thresh < self.building_prevhp[name]:
+                    self.building_hp[name][thresh] = (replay.info.game_time - self.gst)
+            self.building_prevhp[name] = self.cur_hp
 
         for d in destroyed:
-            print 'removing', d
-            del game_buildings[d]
+            del self.game_buildings[d]
 
-    print building_hp
-    # transform last dict to a list sorted by time
-    #   this makes it so the javascript doesn't need to know the threshold values,
-    #   it can just iterate and check for the most recent time
-    for name, threshtimes in building_hp.iteritems():
-        building_hp[name] = sorted([{'hp': k, 'time': v} for k,v in threshtimes.iteritems()], key=lambda x: x['hp'], reverse=True)
+    def end_game(self, replay):
+        self.parse(replay)
 
-    return {'building_hp': building_hp}
+        # transform last dict to a list sorted by time
+        #   this makes it so the javascript doesn't need to know the threshold values,
+        #   it can just iterate and check for the most recent time
+        for name, threshtimes in self.building_hp.iteritems():
+            self.building_hp[name] = sorted([{'hp': k, 'time': v} for k,v in threshtimes.iteritems()], key=lambda x: x['hp'], reverse=True)
+
+    @property
+    def results(self):
+        return {'building_hp': self.building_hp}
+
 
 def main():
     dem_file = sys.argv[1] # pass replay as cmd-line argument!
@@ -109,7 +115,7 @@ def main():
     print 'match:', match_id
     #match = get_match_details(match_id)
     match = db.find_one({'match_id': match_id}) or {}
-    hp = extract_hp(replay)
+    hp = run_single_parser(BuildingHpParser, replay)
     print hp
     #with open('pos.out', 'w') as f:
     #    f.write(str(positions))
