@@ -19,7 +19,6 @@ def run_all_preparsers(replay):
     preparsers = []
     for preparser in preparser_classes:
         preparsers.append(preparser(replay))
-        preparser().clear() # ew
     for tick in replay.iter_full_ticks(start="pregame", end="postgame"):
         for preparser in preparsers:
             preparser.parse(replay)
@@ -33,9 +32,11 @@ def run_all_preparsers(replay):
 
 # http://stackoverflow.com/questions/6760685/creating-a-singleton-in-python
 class Singleton(type):
+    """Returns the same instance each time called, UNLESS an argument is provided
+    This is used to clear the internal state of preparsers between replays"""
     _instances = {}
     def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
+        if cls not in cls._instances or len(args) > 0:
             cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
         return cls._instances[cls]
 
@@ -55,17 +56,12 @@ class Preparser(object):
         """returns the results of parsing, should be a dict"""
         return
 
-    @abc.abstractmethod
-    def clear(self):
-        """clear internal structure to ready for parsing new replay"""
-        return
-
 
 class GameStartTime(Preparser):
     """Provides the game's starting time in seconds"""
     def __init__(self, replay):
         print 'init gamestarttime'
-        self.clear()
+        self.gst = None
     def parse(self, replay):
         if self.gst is None and replay.info.game_state == 'game':
             self.gst = replay.info.game_start_time
@@ -73,14 +69,12 @@ class GameStartTime(Preparser):
     def results(self):
         print 'GameStartTime providing {}'.format(self.gst)
         return self.gst
-    def clear(self):
-        self.gst = None
 
 class PlayerHeroMap(Preparser):
     """Provides a dict mapping player index to the standard name of their hero
     Standard name = 'npc_dota_hero_axe' for example"""
     def __init__(self, replay):
-        self.clear()
+        self.phmap = {}
     def parse(self, replay):
         for player in replay.players:
             if player.index not in self.phmap and player.hero is not None:
@@ -89,13 +83,11 @@ class PlayerHeroMap(Preparser):
     def results(self):
         print 'PlayerHeroMap providing {}'.format(self.phmap)
         return self.phmap
-    def clear(self):
-        self.phmap = {}
 
 class PlayerTeamMap(Preparser):
     """Provides a dict mapping player index to their team ('radiant'|'dire')"""
     def __init__(self, replay):
-        self.clear()
+        self.ptmap = {}
     def parse(self, replay):
         if len(self.ptmap) == 0 and replay.info.game_state == 'game':
             for player in replay.players:
@@ -104,14 +96,12 @@ class PlayerTeamMap(Preparser):
     def results(self):
         print 'PlayerTeamMap providing {}'.format(self.ptmap)
         return self.ptmap
-    def clear(self):
-        self.ptmap = {}
 
 class HeroNameMap(Preparser):
     """Provides a dict mapping hero name to player name
     Example: {npc_dota_hero_axe: 'Lod[A]', ...}"""
     def __init__(self, replay):
-        self.clear()
+        self.hnmap = {}
     def parse(self, replay):
         for player in replay.players:
             if player.hero is not None and player.hero.name not in self.hnmap:
@@ -121,13 +111,12 @@ class HeroNameMap(Preparser):
     def results(self):
         print 'HeroNameMap providing {}'.format(self.hnmap)
         return self.hnmap
-    def clear(self):
-        self.hnmap = {}
 
 class TeamGpmList(Preparser):
     """Provides 2 lists (1 for each team) of player indexes, ordered by ending gpm"""
     def __init__(self, replay):
-        self.clear()
+        self.radgpm = {}
+        self.diregpm = {}
     def _gpm(self, player, replay):
         if replay.info.game_start_time is None:
             return 0 # game hasn't started yet
@@ -146,6 +135,3 @@ class TeamGpmList(Preparser):
         diregpm = [x[0] for x in sorted(self.diregpm.items(), key=lambda x: x[1], reverse=True)]
         print 'TeamGpmList providing {} {}'.format(radgpm, diregpm)
         return radgpm, diregpm
-    def clear(self):
-        self.radgpm = {}
-        self.diregpm = {}
