@@ -74,7 +74,7 @@ class BuildingHpParser(Parser):
 
     def parse(self, replay):
         if replay.info.pausing_team:
-            continue
+            return
 
         destroyed = []
         for name,b in self.game_buildings.iteritems():
