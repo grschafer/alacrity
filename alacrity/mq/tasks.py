@@ -113,6 +113,7 @@ def get_match_ids(league_id):
     if resp and resp['result']['status'] == 1:
         matches.extend(resp['result']['matches'])
         while resp['result']['results_remaining'] > 0:
+            time.sleep(1) # 1 call per second
             resp = api.get_match_history(league_id=league_id, start_at_match_id=matches[-1]['match_id'])
             if resp and resp['result']['status'] == 1:
                 matches.extend(resp['result']['matches'][1:])

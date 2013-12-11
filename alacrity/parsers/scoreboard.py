@@ -78,7 +78,7 @@ class ScoreboardParser(Parser):
         return {'scoreboards':self.scoreboards, 'player_names': self.player_names, 'player_teams': self.player_teams}
 
     def end_game(self, replay):
-        parse(replay)
+        self.parse(replay)
 
 def main():
     dem_file = sys.argv[1] # pass replay as cmd-line argument!
