@@ -7,7 +7,7 @@ from ..config.api import get_match_details
 from ..config.db import db
 from inspect_props import dict_to_csv
 from utils import HeroNameDict, unitIdx
-from parser import Parser
+from parser import Parser, run_single_parser
 from preparsers import GameStartTime, PlayerHeroMap
 
 import pdb
@@ -44,21 +44,13 @@ class GraphParser(Parser):
         return {'xp_graph':dict(self.xp_dict), 'gold_graph':dict(self.gold_dict)}
 
 
-def extract_graphs(replay):
-    replay.go_to_tick('postgame')
-    parser = GraphParser(replay)
-    for tick in replay.iter_ticks(start="pregame", end="postgame", step=parser.tick_step):
-        parser.parse(replay)
-    return parser.results
-
-
 def main():
     dem_file = sys.argv[1] # pass replay as cmd-line argument!
     replay = StreamBinding.from_file(dem_file, start_tick="pregame")
     match_id = replay.info.match_id
     #match = get_match_details(match_id)
     match = db.find_one({'match_id': match_id}) or {}
-    graphs = extract_graphs(replay)
+    graphs = run_single_parser(GraphParser, replay)
     #dict_to_csv('xp.csv', xp)
     #dict_to_csv('gold.csv', gold)
     #match['wards'] = wards

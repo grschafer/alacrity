@@ -8,10 +8,10 @@ import pdb
 import traceback
 
 # helpers
-from alacrity.config.db import db
+from alacrity.config.db import db, errorgame_db
 import alacrity.config.api as api
 from parser import Parser
-import preparsers
+from preparsers import run_all_preparsers
 
 from ward_map import WardParser
 from buyback import BuybackParser
@@ -22,22 +22,20 @@ from roshan import RoshanParser
 from runes import RuneParser
 from scoreboard import ScoreboardParser
 
+class DuplicateHeroException(Exception):
+    """Exception for when multiple players play same hero (e.g. all-mid)"""
+    pass
+
 # __subclasses__() will contain all the subclasses of the
 # base Parser class that are imported in this scope
 parser_classes = Parser.__subclasses__()
-preparser_classes = preparsers.Preparser.__subclasses__()
 
 def parse_replay(replay):
-    # get general pre-parsing info (e.g. player-hero-team-name mappings)
-    # by iterating through replay's full-ticks first
-    # this info is available to parsers because preparsers are singletons
-    preparsers = []
-    for preparser in preparser_classes:
-        preparsers.append(preparser(replay))
-    for tick in replay.iter_full_ticks(start="pregame", end="postgame"):
-        print 'tick: {}'.format(tick)
-        for preparser in preparsers:
-            preparser.parse(replay)
+    # preparsers populate mappings (between heroes, players, teams, etc.)
+    # for use by the parsers
+    # preparsers are singletons so parsers use this data by importing
+    # the preparser they need and getting its results (e.g. GameStartTime().results)
+    run_all_preparsers(replay)
 
     parsers = []
     for parser in parser_classes:
@@ -53,6 +51,8 @@ def parse_replay(replay):
             if interval[parser] <= 0:
                 parser.parse(replay)
                 interval[parser] = parser.tick_step
+    for parser in parsers:
+        parser.end_game(replay)
 
     result = {}
     for parser in parsers:
@@ -71,18 +71,28 @@ def process_replays(directory, recurse=False, force=False):
             path = os.path.join(root, fname)
             print 'processing match from {}'.format(path)
 
-            replay = StreamBinding.from_file(path, start_tick=0)
+            replay = StreamBinding.from_file(path)
             match_id = replay.info.match_id
             print '  match id {}'.format(match_id)
 
             if force or db.find_one({'match_id': match_id}) is None:
                 match = db.find_one({'match_id': match_id}) or {'match_id': match_id}
-                #match.update(api.get_match_details(match_id))
-                #print '  match details: {} vs {}, radiant_win: {}'.format(match.get('radiant_name', ''), match.get('dire_name', ''), match['radiant_win'])
-                parsed = parse_replay(replay)
-                match.update(parsed)
-                result = db.update({'match_id': match_id}, match, upsert=True)
-                print '  result: {}'.format(result)
+                api_match = api.get_match_details(match_id)
+                assert 'error' not in api_match['result']
+                match.update(api_match['result'])
+                print '  match details: {} vs {}, radiant_win: {}'.format(match.get('radiant_name', ''), match.get('dire_name', ''), match['radiant_win'])
+
+                try:
+                    parsed = parse_replay(replay)
+                    match.update(parsed)
+                    result = db.update({'match_id': match_id}, match, upsert=True)
+                    print '  result: {}'.format(result)
+                except DuplicateHeroException as e:
+                    # don't want to interrupt the celery workflow
+                    # e.g. - replay should still be deleted
+                    traceback.print_exc()
+                    errorgame_db.insert({'match_id': match_id})
+
             else:
                 print '  match already exists in database, skipping...'
 

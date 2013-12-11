@@ -7,7 +7,7 @@ from ..config.api import get_match_details
 from ..config.db import db
 from collections import defaultdict
 from utils import HeroNameDict, unitIdx
-from parser import Parser
+from parser import Parser, run_single_parser
 from preparsers import GameStartTime, PlayerHeroMap
 
 import traceback
@@ -41,21 +41,13 @@ class PositionParser(Parser):
         return {'positions':dict(self.pos)}
 
 
-def extract_positions(replay):
-    replay.go_to_tick('postgame')
-    parser = PositionParser(replay)
-    for tick in replay.iter_ticks(start="pregame", end="postgame", step=parser.tick_step):
-        parser.parse(replay)
-    return parser.results
-
-
 def main():
     dem_file = sys.argv[1] # pass replay as cmd-line argument!
     replay = StreamBinding.from_file(dem_file, start_tick="pregame")
     match_id = replay.info.match_id
     #match = get_match_details(match_id)
     match = db.find_one({'match_id': match_id}) or {}
-    positions = extract_positions(replay)
+    positions = run_single_parser(PositionParser, replay)
     print positions
     #with open('pos.out', 'w') as f:
     #    f.write(str(positions))

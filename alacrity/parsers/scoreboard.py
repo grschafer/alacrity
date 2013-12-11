@@ -8,7 +8,7 @@ from ..config.api import get_match_details
 from ..config.db import db
 from inspect_props import dict_to_csv
 from utils import HeroNameDict, unitIdx
-from parser import Parser
+from parser import Parser, run_single_parser
 from preparsers import GameStartTime, PlayerHeroMap, HeroNameMap, TeamGpmList
 
 import traceback
@@ -77,15 +77,8 @@ class ScoreboardParser(Parser):
     def results(self):
         return {'scoreboards':self.scoreboards, 'player_names': self.player_names, 'player_teams': self.player_teams}
 
-
-def extract_scoreboards(replay):
-    replay.go_to_tick('postgame')
-    parser = ScoreboardParser(replay)
-    for tick in replay.iter_ticks(start="pregame", end="postgame", step=parser.tick_step):
-        parser.parse(replay)
-    return parser.results
-
-
+    def end_game(self, replay):
+        parse(replay)
 
 def main():
     dem_file = sys.argv[1] # pass replay as cmd-line argument!
@@ -93,7 +86,7 @@ def main():
     match_id = replay.info.match_id
     #match = get_match_details(match_id)
     match = db.find_one({'match_id': match_id}) or {}
-    scoreboards = extract_scoreboards(replay)
+    scoreboards = run_single_parser(ScoreboardParser, replay)
     print scoreboards
     #pdb.set_trace()
     match.update(scoreboards)

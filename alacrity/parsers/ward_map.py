@@ -5,7 +5,7 @@ from tarrasque import *
 import sys
 from ..config.api import get_match_details
 from ..config.db import db
-from parser import Parser
+from parser import Parser, run_single_parser
 from preparsers import GameStartTime
 
 import pdb
@@ -79,13 +79,6 @@ class WardParser(Parser):
     def results(self):
         return {'wards': self.ward_events}
 
-def extract_wards(replay):
-    replay.go_to_tick('postgame')
-    parser = WardParser(replay)
-    for tick in replay.iter_ticks(start="pregame", end="postgame", step=parser.tick_step):
-        parser.parse(replay)
-    return parser.results
-
 
 def main():
     dem_file = sys.argv[1] # pass replay as cmd-line argument!
@@ -93,7 +86,7 @@ def main():
     match_id = replay.info.match_id
     #match = get_match_details(match_id)
     match = db.find_one({'match_id': match_id}) or {}
-    wards = extract_wards(replay)
+    wards = run_single_parser(WardParser, replay)
     print wards
     match.update(wards)
     result = db.update({'match_id': match_id}, match, upsert=True)

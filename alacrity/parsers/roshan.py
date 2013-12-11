@@ -7,7 +7,7 @@ from ..config.api import get_match_details
 from ..config.db import db
 from inspect_props import dict_to_csv
 from utils import HeroNameDict, unitIdx
-from parser import Parser
+from parser import Parser, run_single_parser
 from preparsers import GameStartTime, PlayerHeroMap, PlayerTeamMap
 
 import traceback
@@ -55,21 +55,13 @@ class RoshanParser(Parser):
     def results(self):
         return {'roshans':self.roshs}
 
-def extract_roshans(replay):
-    replay.go_to_tick('postgame')
-    parser = RoshanParser(replay)
-    for tick in replay.iter_ticks(start="pregame", end="postgame", step=parser.tick_step):
-        parser.parse(replay)
-    return parser.results
-
-
 def main():
     dem_file = sys.argv[1] # pass replay as cmd-line argument!
     replay = StreamBinding.from_file(dem_file, start_tick="pregame")
     match_id = replay.info.match_id
     #match = get_match_details(match_id)
     match = db.find_one({'match_id': match_id}) or {}
-    roshs = extract_roshans(replay)
+    roshs = run_single_parser(RoshanParser, replay)
     print roshs
     match.update(roshs)
     result = db.update({'match_id': match_id}, match, upsert=True)

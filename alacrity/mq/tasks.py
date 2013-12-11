@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 from alacrity.mq.celery import celery
-from alacrity.config.db import db, league_db
+from alacrity.config.db import db, league_db, errorgame_db
 import alacrity.config.api as api
 
 #from alacrity.parsers.run_all import process_replays
@@ -11,6 +11,7 @@ import re
 import os
 import tempfile
 import bz2
+import time
 tempfile.tempdir = os.path.join(tempfile.gettempdir(), "dota2replays")
 if not os.path.exists(tempfile.tempdir):
     os.mkdir(tempfile.tempdir) # permissions determined by `umask`
@@ -68,6 +69,9 @@ def workflow():
     # convert for-loop to chunks?
     # http://docs.celeryproject.org/en/latest/userguide/canvas.html#chunks
     for league_id in league_ids:
+        # TODO: break iterations of these for-loops into separate tasks?
+        time.sleep(1) # only want to hit steam API once per second
+
         print 'for league_id: {}'.format(league_id)
         match_ids = get_match_ids(league_id)
         print '  match_ids: {}'.format(match_ids)
@@ -102,6 +106,7 @@ def get_match_ids(league_id):
     # TODO: cache this call or maintain a separate collection? maybe it's fast b/c index
     print 'get_match_ids'
     cur_match_ids = set(db.distinct('match_id'))
+    errorgame_ids = set(errorgame_db.distinct('match_id'))
 
     matches = []
     resp = api.get_match_history(league_id=league_id)
@@ -117,7 +122,7 @@ def get_match_ids(league_id):
     # TODO: better error-checking
     league_match_ids = set(match['match_id'] for match in matches)
 
-    match_ids = league_match_ids - cur_match_ids
+    match_ids = league_match_ids - cur_match_ids - errorgame_ids
 
     # instead of returning match_ids, does this .apply_async to the whole workflow?
     # group(get_replay_url.s(m) for m in match_ids) | blah

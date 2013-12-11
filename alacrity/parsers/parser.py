@@ -1,4 +1,5 @@
 import abc
+from preparsers import run_all_preparsers
 
 class Parser(object):
     __metaclass__ = abc.ABCMeta
@@ -21,4 +22,16 @@ class Parser(object):
     def results(self):
         """returns the results of parsing, should be a dict"""
         return
+
+    def end_game(self, replay):
+        """called upon reaching postgame, in case parser needs final processing"""
+        return
+
+def run_single_parser(cls, replay):
+    run_all_preparsers(replay)
+    parser = cls(replay)
+    for tick in replay.iter_ticks(start="pregame", end="postgame", step=parser.tick_step):
+        parser.parse(replay)
+    parser.end_game(replay)
+    return parser.results
 

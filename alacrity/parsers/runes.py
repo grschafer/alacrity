@@ -8,7 +8,7 @@ from ..config.api import get_match_details
 from ..config.db import db
 from inspect_props import dict_to_csv
 from utils import HeroNameDict, unitIdx, baseent_coords
-from parser import Parser
+from parser import Parser, run_single_parser
 from preparsers import GameStartTime, PlayerHeroMap
 
 
@@ -56,20 +56,13 @@ class RuneParser(Parser):
     def results(self):
         return {'runes':self.rune_actions}
 
-def extract_runes(replay):
-    replay.go_to_tick('postgame')
-    parser = RuneParser(replay)
-    for tick in replay.iter_ticks(start="pregame", end="postgame", step=parser.tick_step):
-        parser.parse(replay)
-    return parser.results
-
 def main():
     dem_file = sys.argv[1] # pass replay as cmd-line argument!
     replay = StreamBinding.from_file(dem_file, start_tick="pregame")
     match_id = replay.info.match_id
     #match = get_match_details(match_id)
     match = db.find_one({'match_id': match_id}) or {}
-    runes = extract_runes(replay)
+    runes = run_single_parser(RuneParser, replay)
     match.update(runes)
     print runes
     result = db.update({'match_id': match_id}, match, upsert=True)
