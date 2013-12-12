@@ -11,7 +11,7 @@ import traceback
 from alacrity.config.db import db, errorgame_db
 import alacrity.config.api as api
 from parser import Parser
-from preparsers import run_all_preparsers
+from preparsers import run_all_preparsers, MatchMetadata, DuplicateHeroException
 
 from ward_map import WardParser
 from buyback import BuybackParser
@@ -22,10 +22,6 @@ from kill_list import KillParser
 from roshan import RoshanParser
 from runes import RuneParser
 from scoreboard import ScoreboardParser
-
-class DuplicateHeroException(Exception):
-    """Exception for when multiple players play same hero (e.g. all-mid)"""
-    pass
 
 # __subclasses__() will contain all the subclasses of the
 # base Parser class that are imported in this scope
@@ -38,6 +34,7 @@ def parse_replay(replay):
     # the preparser they need and getting its results (e.g. GameStartTime().results)
     run_all_preparsers(replay)
 
+    replay.go_to_tick("pregame") # some parser init depends on pregame state
     parsers = []
     for parser in parser_classes:
         parsers.append(parser(replay))
@@ -73,14 +70,19 @@ def process_replays(directory, recurse=False, force=False):
             print 'processing match from {}'.format(path)
 
             replay = StreamBinding.from_file(path)
-            match_id = replay.info.match_id
+
+            # provides match_id, leagueid, duration, radiant_win, etc.
+            metadata = MatchMetadata(replay).results
+            match_id = metadata['match_id']
             print '  match id {}'.format(match_id)
 
             if force or db.find_one({'match_id': match_id}) is None:
-                match = db.find_one({'match_id': match_id}) or {'match_id': match_id}
-                api_match = api.get_match_details(match_id)
-                assert 'error' not in api_match['result']
-                match.update(api_match['result'])
+                match = db.find_one({'match_id': match_id}) or metadata
+
+                # this data extracted from replay by MatchMetadata now
+                #api_match = api.get_match_details(match_id)
+                #assert 'error' not in api_match['result']
+                #match.update(api_match['result'])
                 print '  match details: {} vs {}, radiant_win: {}'.format(match.get('radiant_name', ''), match.get('dire_name', ''), match['radiant_win'])
 
                 try:

@@ -10,6 +10,11 @@
 import abc
 from utils import HeroNameDict, unitIdx
 
+class DuplicateHeroException(Exception):
+    """Exception for when multiple players play same hero (e.g. all-mid)"""
+    pass
+
+
 def run_all_preparsers(replay):
     preparser_classes = Preparser.__subclasses__()
 
@@ -22,12 +27,6 @@ def run_all_preparsers(replay):
     for tick in replay.iter_full_ticks(start="pregame", end="postgame"):
         for preparser in preparsers:
             preparser.parse(replay)
-
-    # fail replays with duplicate heroes (ie - allmid isn't supported)
-    #  get all dict type preparser results and make sure they have the same length
-    preparser_dicts = filter(lambda p: isinstance(p, dict), [q.results for q in preparsers])
-    if not all([len(x) == len(preparser_dicts[0]) for x in preparser_dicts]):
-        raise DuplicateHeroException()
 
 
 # http://stackoverflow.com/questions/6760685/creating-a-singleton-in-python
@@ -74,11 +73,10 @@ class PlayerHeroMap(Preparser):
     """Provides a dict mapping player index to the standard name of their hero
     Standard name = 'npc_dota_hero_axe' for example"""
     def __init__(self, replay):
-        self.phmap = {}
+        self.phmap = {i:p.hero_name \
+                for i,p in enumerate(replay.demo.file_info.game_info.dota.player_info)}
     def parse(self, replay):
-        for player in replay.players:
-            if player.index not in self.phmap and player.hero is not None:
-                self.phmap[player.index] = HeroNameDict[unitIdx(player.hero)]['name']
+        pass
     @property
     def results(self):
         print 'PlayerHeroMap providing {}'.format(self.phmap)
@@ -87,11 +85,11 @@ class PlayerHeroMap(Preparser):
 class PlayerTeamMap(Preparser):
     """Provides a dict mapping player index to their team ('radiant'|'dire')"""
     def __init__(self, replay):
-        self.ptmap = {}
+        self._teams = {2:'radiant', 3:'dire'}
+        self.ptmap = {i:self._teams[p.game_team] \
+                for i,p in enumerate(replay.demo.file_info.game_info.dota.player_info)}
     def parse(self, replay):
-        if len(self.ptmap) == 0 and replay.info.game_state == 'game':
-            for player in replay.players:
-                self.ptmap[player.index] = player.team
+        pass
     @property
     def results(self):
         print 'PlayerTeamMap providing {}'.format(self.ptmap)
@@ -102,11 +100,12 @@ class HeroNameMap(Preparser):
     Example: {npc_dota_hero_axe: 'Lod[A]', ...}"""
     def __init__(self, replay):
         self.hnmap = {}
+        for p in replay.demo.file_info.game_info.dota.player_info:
+            if p.hero_name in self.hnmap:
+                raise DuplicateHeroException()
+            self.hnmap[p.hero_name] = p.player_name.replace('.',u'\uff0E')
     def parse(self, replay):
-        for player in replay.players:
-            if player.hero is not None and player.hero.name not in self.hnmap:
-                hero_name = HeroNameDict[unitIdx(player.hero)]['name']
-                self.hnmap[hero_name] = player.name.decode('utf-8').replace('.',u'\uff0E')
+        pass
     @property
     def results(self):
         print 'HeroNameMap providing {}'.format(self.hnmap)
@@ -135,3 +134,37 @@ class TeamGpmList(Preparser):
         diregpm = [x[0] for x in sorted(self.diregpm.items(), key=lambda x: x[1], reverse=True)]
         print 'TeamGpmList providing {} {}'.format(radgpm, diregpm)
         return radgpm, diregpm
+
+class MatchMetadata(Preparser):
+    """Extracts metadata (that would otherwise come from the API)
+    Includes: match_id, leagueid, game_mode, radiant_win, duration, start_time,
+        radiant_team_id, radiant_name, dire_team_id, dire_name,
+        for each player: account_id, player_name, hero_name, player_slot, team"""
+    def __init__(self, replay):
+        self._teams = {2:'radiant', 3:'dire'}
+        self.data = {}
+        self.data['match_id'] = replay.demo.file_info.game_info.dota.match_id
+        self.data['leagueid'] = replay.demo.file_info.game_info.dota.leagueid
+        self.data['game_mode'] = replay.demo.file_info.game_info.dota.game_mode
+        self.data['radiant_win'] = replay.demo.file_info.game_info.dota.game_winner == 2
+        self.data['duration'] = replay.demo.file_info.playback_time
+        self.data['start_time'] = replay.demo.file_info.game_info.dota.end_time - self.data['duration']
+        self.data['radiant_team_id'] = replay.demo.file_info.game_info.dota.radiant_team_id
+        self.data['dire_team_id'] = replay.demo.file_info.game_info.dota.dire_team_id
+        self.data['radiant_name'] = replay.demo.file_info.game_info.dota.radiant_team_tag or 'Radiant'
+        self.data['dire_name'] = replay.demo.file_info.game_info.dota.dire_team_tag or 'Dire'
+        self.data['players'] = [
+                {
+                    'account_id': p.steamid,
+                    'player_name': p.player_name.replace('.',u'\uff0E'),
+                    'hero_name': p.hero_name, # e.g: npc_dota_hero_axe
+                    'player_slot': i,
+                    'team': self._teams[p.game_team]
+                }
+                for i,p in enumerate(replay.demo.file_info.game_info.dota.player_info)]
+    def parse(self, replay):
+        pass
+    @property
+    def results(self):
+        print 'MatchMetadata providing {}'.format(self.data)
+        return self.data
