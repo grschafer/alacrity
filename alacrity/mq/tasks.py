@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 from alacrity.mq.celery import celery
-from alacrity.config.db import db, league_db, errorgame_db
+from alacrity.config.db import db, league_db, errorgame_db, userupload_db
 import alacrity.config.api as api
 
 #from alacrity.parsers.run_all import process_replays
@@ -62,7 +62,7 @@ def emit_list2(x):
     return [x, x/2]
 
 @celery.task
-def workflow():
+def league_match_workflow():
     print 'workflow'
     league_ids = get_valid_leagues()
     print 'league_ids: {}'.format(league_ids)
@@ -82,6 +82,29 @@ def workflow():
                 parse_replay.subtask((), {'force': True}), \
                 delete_replay.s() \
             ).apply_async()
+
+
+@celery.task
+def user_replay_workflow():
+    # also fetch user-uploaded replays
+    user_uploaded = userupload_db.find()
+    for match in user_uploaded:
+        # if match requested by match_id
+        if match.get('match_id') is not None:
+            chain( \
+                get_replay_url.s(match['match_id']), \
+                download_replay.s(), \
+                parse_replay.subtask((), {'force': True}), \
+                delete_replay.s() \
+            ).apply_async()
+        # else match uploaded by user to s3 and we already have download url
+        else:
+            chain( \
+                download_replay.s(match['url']), \
+                parse_replay.subtask((), {'force': True}), \
+                delete_replay.s() \
+            ).apply_async()
+
 
 @celery.task(rate_limit="1/m")
 def update_leagues():
@@ -143,22 +166,29 @@ def get_replay_url(matchid):
         # error handling: read the page to see what error was?
         pass
 
-replayfile_regex = re.compile(r"\/(\d+)_")
+# %2F is the urlencoded version of forward slash /
+replayfile_regex = re.compile(r"(\/|%2F)(\d+)[_.]")
 @celery.task(rate_limit="1/m")
 def download_replay(replay_url):
     """Returns the path of the replay file downloaded from the given url"""
-    replay_file = replayfile_regex.search(replay_url).group(1) + ".dem"
+    replay_file = replayfile_regex.search(replay_url).group(2) + ".dem"
 
     #print 'HARDCODED REPLAY URL'
     #replay_url = "http://localhost:8000/271145478_239284874.dem.bz2"
 
     # http://stackoverflow.com/a/16696317/751774
-    # replay will be downloaded to /tmp/dota2replays/replay_file on linux
+    # replay will be downloaded to /tmp/dota2replays/tmpdir/replay_file on linux
     tmpdir = tempfile.mkdtemp(dir=tempfile.tempdir)
     replay_path = os.path.join(tmpdir, replay_file)
 
+    # replays from valve are bz2 compressed
+    # replays from aws are uncompressed and use this NoopDecompressor
+    class NoopDecompressor(object):
+        def decompress(self, chunk):
+            return chunk
+
     r = requests.get(replay_url, stream=True)
-    unzipper = bz2.BZ2Decompressor()
+    unzipper = bz2.BZ2Decompressor() if replay_url.endswith('.bz2') else NoopDecompressor()
     with open(replay_path, 'wb') as f:
         for chunk in r.iter_content(chunk_size=1024):
             if chunk: # filter out keep-alive new chunks

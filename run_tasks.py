@@ -15,14 +15,17 @@ def endswith(array, ending):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('mode',
-            help='all = run whole match workflow' +
-                 'league = update league list' +
+            help='league = workflow for league matches\n' +
+                 'user = workflow for user-uploaded replays\n' +
+                 'league_list = update league list\n' +
                  'parse = parse downloaded replays in /tmp/dota2replays')
 
     args = parser.parse_args()
-    if args.mode == 'all':
-        tasks.workflow.delay()
-    elif args.mode == 'league':
+    if args.mode == 'league':
+        tasks.league_match_workflow.delay()
+    elif args.mode == 'user':
+        tasks.user_replay_workflow.delay()
+    elif args.mode == 'league_list':
         tasks.update_leagues.delay()
     elif args.mode == 'parse':
         print 'parsing replay files in {}'.format(tempfile.tempdir)
@@ -36,7 +39,7 @@ def main():
                         tasks.delete_replay.s() \
                     ).apply_async()
     else:
-        print 'invalid mode {}: must be all, league, or parse'.format(args.mode)
+        print 'invalid mode {}: must be league, user, league_list, or parse'.format(args.mode)
 
 
 if __name__ == '__main__':

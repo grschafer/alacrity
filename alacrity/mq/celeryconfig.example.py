@@ -27,7 +27,11 @@ CELERY_ENABLE_UTC = True
 
 CELERYBEAT_SCHEDULE = {
         'find new matches': {
-            'task': 'alacrity.mq.tasks.workflow',
+            'task': 'alacrity.mq.tasks.league_match_workflow',
+            'schedule': crontab(minute=16, hour=21),
+        },
+        'process user uploaded matches': {
+            'task': 'alacrity.mq.tasks.user_replay_workflow',
             'schedule': crontab(minute=16, hour=21),
         },
         'update leagues': {
