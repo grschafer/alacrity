@@ -1,11 +1,15 @@
 from __future__ import absolute_import
 from alacrity.mq.celery import celery
+import alacrity.mq.celeryconfig as cfg
+import alacrity.config as cfg_root
 from alacrity.config.db import db, league_db, errorgame_db, userupload_db
 import alacrity.config.api as api
 
 #from alacrity.parsers.run_all import process_replays
 from alacrity.parsers.all_in_one import process_replays
 from celery import chain, group
+from ConfigParser import ConfigParser
+import celery.utils.mail as mail
 import requests
 import re
 import os
@@ -15,6 +19,30 @@ import time
 tempfile.tempdir = os.path.join(tempfile.gettempdir(), "dota2replays")
 if not os.path.exists(tempfile.tempdir):
     os.mkdir(tempfile.tempdir) # permissions determined by `umask`
+
+_config = ConfigParser()
+_config_path = os.path.join(os.path.dirname(os.path.realpath(cfg_root.__file__)), 'config.cfg')
+_config.read(_config_path)
+
+# mailer configuration from celeryconfig.py
+mailer = mail.Mailer(host=cfg.EMAIL_HOST,
+                     port=cfg.EMAIL_PORT,
+                     user=cfg.EMAIL_HOST_USER,
+                     password=cfg.EMAIL_HOST_PASSWORD,
+                     use_ssl=cfg.EMAIL_USE_SSL)
+mail_sender = cfg.SERVER_EMAIL
+email_subj_tmpl = "{hostname}: Your Request for Match {match_id} Fulfilled!"
+email_body_tmpl = """
+Your request to process match {match_id} has been fulfilled!
+
+Please visit {match_url} to view your requested match.
+
+Don't hesitate to contact me if anything has gone awry!
+
+Cheers!
+-Greg
+"""
+twitter_body_tmpl = "Match {match_id} has been processed! Please visit {match_url} to view."
 
 
 import time
@@ -77,7 +105,7 @@ def league_match_workflow():
         print '  match_ids: {}'.format(match_ids)
         for match_id in match_ids:
             chain( \
-                get_replay_url.s(match_id), \
+                get_replay_url.s((match_id, None)), \
                 download_replay.s(), \
                 parse_replay.subtask((), {'force': True}), \
                 delete_replay.s() \
@@ -92,7 +120,7 @@ def user_replay_workflow():
         # if match requested by match_id
         if match.get('match_id') is not None:
             chain( \
-                get_replay_url.s(match['match_id']), \
+                get_replay_url.s((match['match_id'], match['notif_key'])), \
                 download_replay.s(), \
                 parse_replay.subtask((), {'force': True}), \
                 delete_replay.s() \
@@ -100,7 +128,7 @@ def user_replay_workflow():
         # else match uploaded by user to s3 and we already have download url
         else:
             chain( \
-                download_replay.s(match['url']), \
+                download_replay.s((match['url'], match['notif_key'])), \
                 parse_replay.subtask((), {'force': True}), \
                 delete_replay.s() \
             ).apply_async()
@@ -154,13 +182,14 @@ def get_match_ids(league_id):
 
 replayurl_regex = re.compile(r"http.*?\.dem\.bz2")
 @celery.task(rate_limit="1/m")
-def get_replay_url(matchid):
+def get_replay_url(match_notif):
+    matchid, notif_key = match_notif
     """Returns the replay url from the matchurls tool for the given matchid"""
     r = requests.get('http://localhost:3100/tools/matchurls', params={'matchid': matchid})
     match = replayurl_regex.search(r.text)
     if match:
         print 'replay url: {}'.format(match.group(0))
-        return match.group(0)
+        return match.group(0), notif_key
     else:
         print 'no replay url found'
         # error handling: read the page to see what error was?
@@ -169,7 +198,8 @@ def get_replay_url(matchid):
 # %2F is the urlencoded version of forward slash /
 replayfile_regex = re.compile(r"(\/|%2F)(\d+)[_.]")
 @celery.task(rate_limit="1/m")
-def download_replay(replay_url):
+def download_replay(url_notif):
+    replay_url, notif_key = url_notif
     """Returns the path of the replay file downloaded from the given url"""
     replay_file = replayfile_regex.search(replay_url).group(2) + ".dem"
 
@@ -195,15 +225,42 @@ def download_replay(replay_url):
                 f.write(unzipper.decompress(chunk))
                 f.flush()
     print 'replay downloaded to: {}'.format(replay_path)
-    return replay_path
+    return replay_path, notif_key
 
 @celery.task(rate_limit="1/m")
-def parse_replay(replay_path, **kwargs):
+def parse_replay(path_notif, **kwargs):
+    replay_path, notif_key = path_notif
     """Runs parsers on the given replay (which output a json file to datastore)"""
     # run single concatenated parser
 
-    process_replays(os.path.dirname(replay_path), **kwargs)
+    match_ids = process_replays(os.path.dirname(replay_path), **kwargs)
+    if notif_key is not None:
+        notify_requester.delay((match_ids[0], notif_key))
     return replay_path
+
+@celery.task
+def notify_requester(match_notif):
+    match_id, notif_key = match_notif
+    notify_request = userupload_db.find_one({'notif_key': notif_key})
+    notify_method = notify_request['notif_method'].lower()
+    to_addr = notify_request['notif_address']
+    match_url = "http://{}/matches/{}".format(_config.get('web', 'hostname'), match_id)
+
+    # limit access to match to requesting user and remove from userupload db
+    db.update({'match_id': match_id}, {'$set': {'requester': notify_request['requesting_user']}})
+    userupload_db.remove({'notif_key': notif_key})
+
+    if notify_method == "email":
+        subj_text = email_subj_tmpl.format(hostname=_config.get('web', 'hostname'), match_id=match_id)
+        body_text = email_body_tmpl.format(match_id=match_id, match_url=match_url)
+        msg = mail.Message(to=to_addr, sender=mail_sender, subject=subj_text, body=body_text)
+        mailer.send(msg)
+    elif notify_method == "twitter":
+        msg_text = twitter_body_tmpl.format(match_id=match_id, match_url=match_url)
+        username = to_addr if to_addr.startswith('@') else "@{}".format(to_addr)
+        # TODO: implement twitter messaging
+        raise NotImplementedError()
+
 
 @celery.task
 def delete_replay(replay_path):

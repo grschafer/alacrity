@@ -64,6 +64,7 @@ def endswith(array, ending):
             yield x
 
 def process_replays(directory, recurse=False, force=False):
+    match_ids = []
     for root, dirs, files in os.walk(directory):
         for fname in endswith(files, '.dem'):
             path = os.path.join(root, fname)
@@ -74,6 +75,7 @@ def process_replays(directory, recurse=False, force=False):
             # provides match_id, leagueid, duration, radiant_win, etc.
             metadata = MatchMetadata(replay).results
             match_id = metadata['match_id']
+            match_ids.append(match_id)
             print '  match id {}'.format(match_id)
 
             if force or db.find_one({'match_id': match_id}) is None:
@@ -102,6 +104,7 @@ def process_replays(directory, recurse=False, force=False):
         # don't walk sub-directories unless -r flag supplied
         if not recurse:
             del dirs[:]
+    return match_ids
 
 
 

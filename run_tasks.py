@@ -1,4 +1,5 @@
 import alacrity.mq.tasks as tasks
+from alacrity.config.db import userupload_db
 from celery import chain
 import argparse
 import tempfile
@@ -34,8 +35,9 @@ def main():
                 for fname in endswith(files, '.dem'):
                     path = os.path.join(root, fname)
                     print 'queuing match from {}'.format(path)
+                    # TODO: change notif_key propagation or look it up here
                     chain( \
-                        tasks.parse_replay.subtask((path,), {'force': True}), \
+                        tasks.parse_replay.subtask(((path, None)), {'force': True}), \
                         tasks.delete_replay.s() \
                     ).apply_async()
     else:

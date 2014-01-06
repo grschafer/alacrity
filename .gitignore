@@ -48,5 +48,9 @@ config.cfg
 .idea
 
 *.png
-utils/items.txt
-utils/npc_heroes.txt
+spritesheets/items.txt
+spritesheets/npc_heroes.txt
+*.dem
+*.dem.bz2
+*.log
+*.csv
