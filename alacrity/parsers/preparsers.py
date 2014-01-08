@@ -147,8 +147,10 @@ class MatchMetadata(Preparser):
         self.data['leagueid'] = replay.demo.file_info.game_info.dota.leagueid
         self.data['game_mode'] = replay.demo.file_info.game_info.dota.game_mode
         self.data['radiant_win'] = replay.demo.file_info.game_info.dota.game_winner == 2
-        self.data['duration'] = replay.demo.file_info.playback_time
-        self.data['start_time'] = replay.demo.file_info.game_info.dota.end_time - self.data['duration']
+        # this duration is including loading/ban-pick time,
+        # I only want game time which is provided in the parse method below
+        #self.data['duration'] = replay.demo.file_info.playback_time
+        self.data['start_time'] = replay.demo.file_info.game_info.dota.end_time - replay.demo.file_info.playback_time
         self.data['radiant_team_id'] = replay.demo.file_info.game_info.dota.radiant_team_id
         self.data['dire_team_id'] = replay.demo.file_info.game_info.dota.dire_team_id
         self.data['radiant_name'] = replay.demo.file_info.game_info.dota.radiant_team_tag or 'Radiant'
@@ -162,6 +164,8 @@ class MatchMetadata(Preparser):
                     'team': self._teams[p.game_team]
                 }
                 for i,p in enumerate(replay.demo.file_info.game_info.dota.player_info)]
+        replay.go_to_tick('postgame')
+        self.data['duration'] = replay.info.game_end_time - replay.info.game_start_time
     def parse(self, replay):
         pass
     @property

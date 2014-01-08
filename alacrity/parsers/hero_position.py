@@ -28,10 +28,15 @@ class PositionParser(Parser):
     def parse(self, replay):
         if replay.info.pausing_team:
             return
-        for pl in replay.players:
-            if pl and pl.hero:
-                name = self.player_hero_map[pl.index]
-                x,y = pl.hero.position if pl.hero else (0,0)
+        for idx,name in self.player_hero_map.iteritems():
+            pl = [p for p in replay.players if p.index == idx]
+            if len(pl) == 0 or pl[0].hero is None:
+                x = y = -8000
+                hp_pct = 1.0
+                self.pos[name].append((x, y, hp_pct))
+            else:
+                pl = pl[0]
+                x,y = pl.hero.position
                 hp_pct = int(float(pl.hero.health) / pl.hero.max_health * 100)
                 self.pos[name].append((int(x),int(y),hp_pct))
         self.pos['time'].append(replay.info.game_time - self.gst)

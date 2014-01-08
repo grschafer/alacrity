@@ -4,6 +4,7 @@
 
 from tarrasque import *
 import sys
+import string
 from ..config.api import get_match_details
 from ..config.db import db
 from inspect_props import dict_to_csv
@@ -49,11 +50,26 @@ class ScoreboardParser(Parser):
         if replay.info.pausing_team:
             return
         scoreboard = {'time':replay.info.game_time - self.gst}
-        for pl in replay.players:
-            if not pl.hero:
-                return
-            name = HeroNameDict[unitIdx(pl.hero)]['name']
+        team_gold = {
+                'radiant': replay.world.find_by_dt('DT_DOTA_DataRadiant')[1],
+                'dire': replay.world.find_by_dt('DT_DOTA_DataDire')[1]
+                }
+        for idx,name in self.player_hero_map.iteritems():
+            player = [p for p in replay.players if p.index == idx]
+            if len(player) == 0:
+                if len(self.scoreboards) > 0:
+                    scoreboard[name] = self.scoreboards[-1][name]
+                else:
+                    scoreboard[name] = {'l': 0, 'k': 0, 'd': 0, 'a': 0, 'i0': 0, 'i1': 0, 'i2': 0, 'i3': 0, 'i4': 0, 'i5': 0, 'g': 0, 'lh': 0, 'dn': 0, 'gpm': 0, 'xpm': 0}
+                continue
+
+            pl = player[0]
+            if pl.hero is None:
+                continue
+
             gpm,xpm = get_gpm_xpm(pl, replay, self.gst)
+            # gold values stored differently in replays now
+            gold = team_gold[pl.team][(u'DT_DOTA_DataNonSpectator', 'm_iReliableGold.000{}'.format(idx))] + team_gold[pl.team][(u'DT_DOTA_DataNonSpectator', 'm_iUnreliableGold.000{}'.format(idx))]
             scoreboard[name] = {
                 'l': pl.hero.level,
                 'k': pl.kills,
@@ -65,7 +81,8 @@ class ScoreboardParser(Parser):
                 'i3': pl.hero.inventory[3].name if len(pl.hero.inventory) > 3 else 0,
                 'i4': pl.hero.inventory[4].name if len(pl.hero.inventory) > 4 else 0,
                 'i5': pl.hero.inventory[5].name if len(pl.hero.inventory) > 5 else 0,
-                'g':  pl.total_gold,
+                #'g':  pl.total_gold,
+                'g':  gold,
                 'lh': pl.last_hits,
                 'dn': pl.denies,
                 'gpm': gpm,
