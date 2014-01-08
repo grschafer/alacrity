@@ -242,9 +242,12 @@ def parse_replay(path_notif, **kwargs):
 def notify_requester(match_notif):
     match_id, notif_key = match_notif
     notify_request = userupload_db.find_one({'notif_key': notif_key})
+    if notify_request is None or 'notif_method' not in notify_request:
+        return
+
     notify_method = notify_request['notif_method'].lower()
     to_addr = notify_request['notif_address']
-    match_url = "http://{}/matches/{}".format(_config.get('web', 'hostname'), match_id)
+    match_url = "http://{}/matches/{}".format(_config.get('web', 'hostname').strip('"'), match_id)
 
     # limit access to match to requesting user and remove from userupload db
     db.update({'match_id': match_id}, {'$set': {'requester': notify_request['requesting_user']}})

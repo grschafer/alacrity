@@ -10,6 +10,7 @@ import traceback
 # helpers
 from alacrity.config.db import db, errorgame_db
 import alacrity.config.api as api
+import alacrity.config.s3 as s3
 from parser import Parser
 from preparsers import run_all_preparsers, MatchMetadata, DuplicateHeroException
 
@@ -63,6 +64,16 @@ def endswith(array, ending):
         if x.endswith(ending):
             yield x
 
+_local_keys = ['dire_name', 'radiant_name', 'duration', 'leagueid',
+               'dire_team_id', 'radiant_team_id',
+               'game_mode', 'match_id', 'radiant_win',
+               'players', 'start_time', '_id']
+def split_match_data(match):
+    """Splits match data into metadata (for storing in db) and widget data (for storing in S3)"""
+    metadata = {k:v for k,v in match.iteritems() if k in _local_keys}
+    otherdata = {k:v for k,v in match.iteritems() if k not in _local_keys}
+    return metadata, otherdata
+
 def process_replays(directory, recurse=False, force=False):
     match_ids = []
     for root, dirs, files in os.walk(directory):
@@ -79,7 +90,8 @@ def process_replays(directory, recurse=False, force=False):
             print '  match id {}'.format(match_id)
 
             if force or db.find_one({'match_id': match_id}) is None:
-                match = db.find_one({'match_id': match_id}) or metadata
+                #match = db.find_one({'match_id': match_id}) or metadata
+                match = metadata
 
                 # this data extracted from replay by MatchMetadata now
                 #api_match = api.get_match_details(match_id)
@@ -90,7 +102,16 @@ def process_replays(directory, recurse=False, force=False):
                 try:
                     parsed = parse_replay(replay)
                     match.update(parsed)
-                    result = db.update({'match_id': match_id}, match, upsert=True)
+
+                    # store metadata in db, and (much larger) widget data in s3
+                    metadata, matchdata = split_match_data(match)
+                    url = s3.upload(match_id, matchdata)
+                    metadata['url'] = url
+                    # requester field is changed to specific user later if applicable
+                    metadata['requester'] = 'public'
+                    result = db.update({'match_id': match_id}, metadata, upsert=True)
+
+                    #result = db.update({'match_id': match_id}, match, upsert=True)
                     print '  result: {}'.format(result)
                 except DuplicateHeroException as e:
                     # don't want to interrupt the celery workflow
