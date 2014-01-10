@@ -482,6 +482,23 @@ class HeroNameDict(dict):
      {'dt_name': 'DT_DOTA_Unit_Hero_Legion_Commander',
       'id': 104,
       'localized_name': 'Legion Commander',
-      'name': 'npc_dota_hero_legion_commander'}]
+      'name': 'npc_dota_hero_legion_commander'},
+     {'dt_name': 'DT_DOTA_Unit_Hero_EmberSpirit',
+      'id': 106,
+      'localized_name': 'Ember Spirit',
+      'name': 'npc_dota_hero_ember_spirit'},
+     {'dt_name': 'DT_DOTA_Unit_Hero_EarthSpirit',
+      'id': 107,
+      'localized_name': 'Earth Spirit',
+      'name': 'npc_dota_hero_earth_spirit'},
+     {'dt_name': 'DT_DOTA_Unit_Hero_AbyssalUnderlord',
+      'id': 108,
+      'localized_name': 'Abyssal Underlord',
+      'name': 'npc_dota_hero_abyssal_underlord'},
+     {'dt_name': 'DT_DOTA_Unit_Hero_Terrorblade',
+      'id': 109,
+      'localized_name': 'Terrorblade',
+      'name': 'npc_dota_hero_terrorblade'},
+     ]
 
 HeroNameDict = HeroNameDict()

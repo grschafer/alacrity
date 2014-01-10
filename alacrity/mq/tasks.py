@@ -234,7 +234,7 @@ def parse_replay(path_notif, **kwargs):
     # run single concatenated parser
 
     match_ids = process_replays(os.path.dirname(replay_path), **kwargs)
-    if notif_key is not None:
+    if notif_key is not None and len(match_ids) > 0:
         notify_requester.delay((match_ids[0], notif_key))
     return replay_path
 

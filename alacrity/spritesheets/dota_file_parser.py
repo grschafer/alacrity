@@ -65,14 +65,15 @@ def parse(filename):
             # if line contains only closing brace, move cur_obj up a level
     return result
 
-
+parsed = None
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('file',
             help='file to parse (e.g. "npc_heroes.txt" or "items.txt")')
     args = parser.parse_args()
 
-    result = parse(args.file)
+    global parsed
+    parsed = parse(args.file)
 
 
 if __name__ == '__main__':
