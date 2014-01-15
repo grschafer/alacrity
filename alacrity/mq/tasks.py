@@ -24,6 +24,10 @@ _config = ConfigParser()
 _config_path = os.path.join(os.path.dirname(os.path.realpath(cfg_root.__file__)), 'config.cfg')
 _config.read(_config_path)
 
+matchurls_host = _config.get('matchurls', 'host')
+matchurls_port = _config.get('matchurls', 'port')
+matchurls_url = "http://{}:{}/tools/matchurls".format(matchurls_host, matchurls_port)
+
 # mailer configuration from celeryconfig.py
 mailer = mail.Mailer(host=cfg.EMAIL_HOST,
                      port=cfg.EMAIL_PORT,
@@ -185,7 +189,7 @@ replayurl_regex = re.compile(r"http.*?\.dem\.bz2")
 def get_replay_url(match_notif):
     matchid, notif_key = match_notif
     """Returns the replay url from the matchurls tool for the given matchid"""
-    r = requests.get('http://localhost:3100/tools/matchurls', params={'matchid': matchid})
+    r = requests.get(matchurls_url, params={'matchid': matchid})
     match = replayurl_regex.search(r.text)
     if match:
         print 'replay url: {}'.format(match.group(0))
