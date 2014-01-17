@@ -13,6 +13,7 @@ import traceback
 
 WARD_NAMEIDX = 207
 SENTRY_NAMEIDX = 208 # only way to differentiate wards pre-6.79
+# post-6.79 the iUnitNameIndex value for sentries is 212
 
 @register_entity("DT_DOTA_NPC_Observer_Ward")
 class Ward(BaseNPC):
@@ -48,7 +49,8 @@ class WardParser(Parser):
         for w in wardlist:
             if w.ehandle not in self.cur_wards:
                 ward_type = "obs"
-                if w.properties[('DT_DOTA_BaseNPC', 'm_iUnitNameIndex')] == SENTRY_NAMEIDX:
+                if w.dt_key == 'DT_DOTA_NPC_Observer_Ward_TrueSight' or
+                   w.properties[('DT_DOTA_BaseNPC', 'm_iUnitNameIndex')] == SENTRY_NAMEIDX:
                     ward_type = "sentry"
                 self.cur_wards.add(w.ehandle)
                 self.ward_events.append({
@@ -85,11 +87,11 @@ def main():
     replay = StreamBinding.from_file(dem_file, start_tick="pregame")
     match_id = replay.info.match_id
     #match = get_match_details(match_id)
-    match = db.find_one({'match_id': match_id}) or {}
+    #match = db.find_one({'match_id': match_id}) or {}
     wards = run_single_parser(WardParser, replay)
     print wards
-    match.update(wards)
-    result = db.update({'match_id': match_id}, match, upsert=True)
+    #match.update(wards)
+    #result = db.update({'match_id': match_id}, match, upsert=True)
 
 if __name__ == '__main__':
     main()
