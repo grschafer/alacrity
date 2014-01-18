@@ -30,17 +30,13 @@ class ScoreboardParser(Parser):
     def __init__(self, replay):
         self.gst = GameStartTime().results
         self.player_hero_map = PlayerHeroMap().results
-        self.player_names = HeroNameMap().results
         self.rad_gpm, self.dire_gpm = TeamGpmList().results
         assert self.gst is not None
         assert self.player_hero_map is not None and len(self.player_hero_map) > 0
-        assert self.player_names is not None and len(self.player_names) > 0
         assert self.rad_gpm is not None and len(self.rad_gpm) > 0
         assert self.dire_gpm is not None and len(self.dire_gpm) > 0
 
         self.scoreboards = []
-        self.player_teams = {'radiant': [self.player_hero_map[idx] for idx in self.rad_gpm],
-                             'dire': [self.player_hero_map[idx] for idx in self.dire_gpm]}
 
     @property
     def tick_step(self):
@@ -92,7 +88,7 @@ class ScoreboardParser(Parser):
 
     @property
     def results(self):
-        return {'scoreboards':self.scoreboards, 'player_names': self.player_names, 'player_teams': self.player_teams}
+        return {'scoreboards':self.scoreboards}
 
     def end_game(self, replay):
         self.parse(replay)
