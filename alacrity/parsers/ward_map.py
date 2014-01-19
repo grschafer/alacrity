@@ -49,7 +49,7 @@ class WardParser(Parser):
         for w in wardlist:
             if w.ehandle not in self.cur_wards:
                 ward_type = "obs"
-                if w.dt_key == 'DT_DOTA_NPC_Observer_Ward_TrueSight' or
+                if w.dt_key == 'DT_DOTA_NPC_Observer_Ward_TrueSight' or \
                    w.properties[('DT_DOTA_BaseNPC', 'm_iUnitNameIndex')] == SENTRY_NAMEIDX:
                     ward_type = "sentry"
                 self.cur_wards.add(w.ehandle)
