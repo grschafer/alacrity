@@ -111,7 +111,7 @@ def league_match_workflow():
             chain( \
                 get_replay_url.s((match_id, None)), \
                 download_replay.s(), \
-                parse_replay.subtask((), {'force': True}), \
+                parse_replay.s(), \
                 delete_replay.s() \
             ).apply_async()
 
@@ -126,14 +126,14 @@ def user_replay_workflow():
             chain( \
                 get_replay_url.s((match['match_id'], match['notif_key'])), \
                 download_replay.s(), \
-                parse_replay.subtask((), {'force': True}), \
+                parse_replay.s(), \
                 delete_replay.s() \
             ).apply_async()
         # else match uploaded by user to s3 and we already have download url
         else:
             chain( \
                 download_replay.s((match['url'], match['notif_key'])), \
-                parse_replay.subtask((), {'force': True}), \
+                parse_replay.s(), \
                 delete_replay.s() \
             ).apply_async()
 
@@ -212,8 +212,10 @@ def download_replay(url_notif):
 
     # http://stackoverflow.com/a/16696317/751774
     # replay will be downloaded to /tmp/dota2replays/tmpdir/replay_file on linux
-    tmpdir = tempfile.mkdtemp(dir=tempfile.tempdir)
-    replay_path = os.path.join(tmpdir, replay_file)
+    replay_path = os.path.join(tempfile.tempdir, replay_file)
+    # if replay file already exists, don't download it again
+    if os.path.isfile(replay_path):
+        return replay_path, notif_key
 
     # replays from valve are bz2 compressed
     # replays from aws are uncompressed and use this NoopDecompressor

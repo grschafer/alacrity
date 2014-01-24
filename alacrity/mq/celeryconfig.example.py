@@ -7,8 +7,10 @@ BROKER_URL = CELERY_RESULT_BACKEND = \
 
 CELERY_IMPORTS = ['alacrity.mq.tasks']
 
-#CELERY_TASK_SERIALIZER = 'json' # default: 'pickle'
-#CELERY_RESULT_SERIALIZER = 'json' # default: 'pickle'
+CELERY_ACCEPT_CONTENT = ['json']
+
+CELERY_TASK_SERIALIZER = 'json' # default: 'pickle'
+CELERY_RESULT_SERIALIZER = 'json' # default: 'pickle'
 
 # remove results and result queues 1 hour after completion
 # shouldn't affect groups/chains even if worker is held up
@@ -18,7 +20,7 @@ CELERY_IMPORTS = ['alacrity.mq.tasks']
 #CELERY_IGNORE_RESULT = True # need results for .get() and chords?
 
 # long-running tasks, so we want them to spread evenly among workers
-CELERYD_PREFETCH_MULTIPLIER = 1 # default: 4
+CELERYD_PREFETCH_MULTIPLIER = 4 # default: 4
 
 #CELERY_TIMEZONE = 'US/Mountain' # requires pytz
 CELERY_ENABLE_UTC = True

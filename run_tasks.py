@@ -37,7 +37,7 @@ def main():
                     print 'queuing match from {}'.format(path)
                     # TODO: change notif_key propagation or look it up here
                     chain( \
-                        tasks.parse_replay.subtask(((path, None)), {'force': True}), \
+                        tasks.parse_replay.subtask(((path, None))), \
                         tasks.delete_replay.s() \
                     ).apply_async()
     else:
