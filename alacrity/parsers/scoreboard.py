@@ -10,7 +10,7 @@ from ..config.db import db
 from inspect_props import dict_to_csv
 from utils import HeroNameDict, unitIdx
 from parser import Parser, run_single_parser
-from preparsers import GameStartTime, PlayerHeroMap, HeroNameMap, TeamGpmList
+from preparsers import GameStartTime, PlayerHeroMap, HeroNameMap
 
 import traceback
 from collections import defaultdict
@@ -30,11 +30,8 @@ class ScoreboardParser(Parser):
     def __init__(self, replay):
         self.gst = GameStartTime().results
         self.player_hero_map = PlayerHeroMap().results
-        self.rad_gpm, self.dire_gpm = TeamGpmList().results
         assert self.gst is not None
         assert self.player_hero_map is not None and len(self.player_hero_map) > 0
-        assert self.rad_gpm is not None and len(self.rad_gpm) > 0
-        assert self.dire_gpm is not None and len(self.dire_gpm) > 0
 
         self.scoreboards = []
 
@@ -46,10 +43,14 @@ class ScoreboardParser(Parser):
         if replay.info.pausing_team:
             return
         scoreboard = {'time':replay.info.game_time - self.gst}
-        team_gold = {
-                'radiant': replay.world.find_by_dt('DT_DOTA_DataRadiant')[1],
-                'dire': replay.world.find_by_dt('DT_DOTA_DataDire')[1]
-                }
+        try:
+            team_gold = {
+                    'radiant': replay.world.find_by_dt('DT_DOTA_DataRadiant')[1],
+                    'dire': replay.world.find_by_dt('DT_DOTA_DataDire')[1]
+                    }
+        except KeyError:
+            team_gold = False
+
         for idx,name in self.player_hero_map.iteritems():
             player = [p for p in replay.players if p.index == idx]
             if len(player) == 0:
@@ -65,7 +66,11 @@ class ScoreboardParser(Parser):
 
             gpm,xpm = get_gpm_xpm(pl, replay, self.gst)
             # gold values stored differently in replays now
-            gold = team_gold[pl.team][(u'DT_DOTA_DataNonSpectator', 'm_iReliableGold.000{}'.format(idx))] + team_gold[pl.team][(u'DT_DOTA_DataNonSpectator', 'm_iUnreliableGold.000{}'.format(idx))]
+            if team_gold:
+                gold = team_gold[pl.team][(u'DT_DOTA_DataNonSpectator', 'm_iReliableGold.000{}'.format(idx))] + team_gold[pl.team][(u'DT_DOTA_DataNonSpectator', 'm_iUnreliableGold.000{}'.format(idx))]
+            else:
+                gold = pl.total_gold
+
             scoreboard[name] = {
                 'l': pl.hero.level,
                 'k': pl.kills,
