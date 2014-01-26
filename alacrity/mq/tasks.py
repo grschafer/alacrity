@@ -248,16 +248,19 @@ def parse_replay(path_notif, **kwargs):
 def notify_requester(match_notif):
     match_id, notif_key = match_notif
     notify_request = userupload_db.find_one({'notif_key': notif_key})
-    if notify_request is None or 'notif_method' not in notify_request:
+    if notify_request is None:
+        return
+
+    # limit access to match to requesting user and remove from userupload db
+    db.update({'match_id': match_id}, {'$set': {'requester': notify_request['requesting_user']}})
+    userupload_db.remove({'notif_key': notif_key})
+
+    if 'notif_method' not in notify_request:
         return
 
     notify_method = notify_request['notif_method'].lower()
     to_addr = notify_request['notif_address']
     match_url = "http://{}/matches/{}".format(_config.get('web', 'hostname').strip('"'), match_id)
-
-    # limit access to match to requesting user and remove from userupload db
-    db.update({'match_id': match_id}, {'$set': {'requester': notify_request['requesting_user']}})
-    userupload_db.remove({'notif_key': notif_key})
 
     if notify_method == "email":
         subj_text = email_subj_tmpl.format(hostname=_config.get('web', 'hostname'), match_id=match_id)
@@ -276,6 +279,4 @@ def delete_replay(replay_path):
     """Removes the replay file and directory from the filesystem"""
     os.remove(replay_path)
     print 'removed replay file from: {}'.format(replay_path)
-    os.rmdir(os.path.dirname(replay_path))
-    print 'removed containing tmp directory: {}'.format(os.path.dirname(replay_path))
     return True
