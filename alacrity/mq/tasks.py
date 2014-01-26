@@ -215,6 +215,7 @@ def download_replay(url_notif):
     replay_path = os.path.join(tempfile.tempdir, replay_file)
     # if replay file already exists, don't download it again
     if os.path.isfile(replay_path):
+        print 'file {} already on disk, skipping download'.format(replay_path)
         return replay_path, notif_key
 
     # replays from valve are bz2 compressed
@@ -248,12 +249,14 @@ def parse_replay(path_notif, **kwargs):
 def notify_requester(match_notif):
     match_id, notif_key = match_notif
     notify_request = userupload_db.find_one({'notif_key': notif_key})
+    print 'notifying requester for db entry: {}'.format(notify_request)
     if notify_request is None:
         return
 
     # limit access to match to requesting user and remove from userupload db
     db.update({'match_id': match_id}, {'$set': {'requester': notify_request['requesting_user']}})
     userupload_db.remove({'notif_key': notif_key})
+    print 'match updated with requester {} and removed by key {} from useruploads'.format(notify_request['requesting_user'], notif_key)
 
     if 'notif_method' not in notify_request:
         return
@@ -267,6 +270,7 @@ def notify_requester(match_notif):
         body_text = email_body_tmpl.format(match_id=match_id, match_url=match_url)
         msg = mail.Message(to=to_addr, sender=mail_sender, subject=subj_text, body=body_text)
         mailer.send(msg)
+        print 'emailing notification for match {}'.format(match_url)
     elif notify_method == "twitter":
         msg_text = twitter_body_tmpl.format(match_id=match_id, match_url=match_url)
         username = to_addr if to_addr.startswith('@') else "@{}".format(to_addr)
